@@ -36,8 +36,6 @@ def parse_args():
     """
     Parse arguments
     """
-    # List handling: https://stackoverflow.com/questions/15753701/how-can-i-pass-a-list-as-a-command-line-argument-with-argparse
-
     # Add global parameters
     parser = argparse.ArgumentParser(description='BMM single experiment on UCR datasets.')
 
