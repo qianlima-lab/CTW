@@ -33,7 +33,7 @@ For other examples, please refer to ```./run_sym30.sh```.
 
 ## Acknowledgement
 We adapted the following open-source code to implement the state-of-the-art algorithms to compare CTW:
-* [SIGUA](https://github.com/bhanML/SIGUA
+* [SIGUA](https://github.com/bhanML/SIGUA)
 * [Co-teaching](https://github.com/bhanML/Co-teaching) 
 * [MixUp and MixUp-GMM](https://github.com/PaulAlbert31/LabelNoiseCorrection)
 * [SREA](https://github.com/Castel44/SREA)
