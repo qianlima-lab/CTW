@@ -1,5 +1,6 @@
 #!/bin/bash
 
+# add '--ucr 128' for training all datasets in UCR
 ############################################# Our Model: CTW ##############################################
 nohup python ./src/main.py --model CTW --epochs 300 --lr 1e-3 --label_noise 0 \
 --embedding_size 32 --ni 0.3 --num_workers 1 --arg_interval 1 --mean_loss_len 10 --gamma 0.3 \
