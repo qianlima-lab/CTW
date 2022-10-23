@@ -303,8 +303,8 @@ def cluster_accuracy(y_true, y_predicted, cluster_number=None):
     for i in range(y_predicted.size):
         count_matrix[y_predicted[i], y_true[i]] += 1
 
-    row_ind, col_ind = linear_sum_assignment(count_matrix.max() - count_matrix)  # 計算如何分配標簽可以使得預測正確的最多
-    reassignment = dict(zip(row_ind, col_ind))  # 重新分配預測標簽所對應的真實標簽
+    row_ind, col_ind = linear_sum_assignment(count_matrix.max() - count_matrix)
+    reassignment = dict(zip(row_ind, col_ind))
     accuracy = count_matrix[row_ind, col_ind].sum() / y_predicted.size
     return reassignment, accuracy
 
@@ -762,9 +762,6 @@ def create_synthetic_dataset(pattern_len=[0.25], pattern_pos=[0.1, 0.65], ts_len
 
     nb_classes = len(pattern_pos) * len(pattern_len)
 
-    # out_dir = '/b/home/uha/hfawaz-datas/dl-tsc/archives/UCRArchive_2018/BinaryData/'
-    #
-    # create_directory(out_dir)
 
     x_train = np.random.normal(0.0, 0.1, size=(ts_n, ts_len))
     # x_test = np.random.normal(0.0, 0.1, size=(ts_n, ts_len))

@@ -552,7 +552,6 @@ def warmup_new_model(data_loader, model, optimizer, criterion, teacher_idx,args,
         predict_labels = torch.argmax(pro, dim=1)
         origin_predict_labels = predict_labels.clone().detach()
         ##########################################################################################
-        # 修正及选择准确率
         clean_label_acc += (predict_labels.cpu().numpy()==Y_train_clean[x_idx]).sum()
         origin_pred_clean_label_acc+= (origin_predict_labels.cpu().numpy()==Y_train_clean[x_idx]).sum()
         #########################################################################################/
