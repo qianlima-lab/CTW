@@ -623,7 +623,7 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
             aug_model_loss = 0.
             aug_recon_loss = 0.
             avg_accuracy_aug = 0.
-        elif (batch_idx % args.add_noise_interval == 0) and len(model_sel_idx)!=1:
+        elif (batch_idx % args.arg_interval == 0) and len(model_sel_idx)!=1:
 
             if args.aug=='GNoise':
                 x_aug = torch.from_numpy(
@@ -754,7 +754,7 @@ def train_step_single_aug(data_loader, model, optimizer, criterion,
 
         if args.aug == 'NoAug':
             aug_model_loss = 0.
-        elif batch_idx % args.add_noise_interval == 0:
+        elif batch_idx % args.arg_interval == 0:
 
             if args.aug == 'GNoise':
                 x_aug = torch.from_numpy(
@@ -881,7 +881,7 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
         # data Augmentation after selecting clean samples
         if args.aug == 'NoAug':
             aug_model_loss = 0.
-        elif batch_idx % args.add_noise_interval == 0:
+        elif batch_idx % args.arg_interval == 0:
 
             if args.aug=='GNoise':
                 x_aug = torch.from_numpy(
@@ -1006,7 +1006,7 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
         # data Augmentation after selecting clean samples
         if args.aug == 'NoAug':
             aug_model_loss = 0.
-        elif (batch_idx % args.add_noise_interval == 0) and len(model_sel_idx)>0:
+        elif (batch_idx % args.arg_interval == 0) and len(model_sel_idx)>0:
 
             if args.aug=='GNoise':
                 x_aug = torch.from_numpy(
@@ -1138,7 +1138,7 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
 
         if args.aug == 'NoAug':
             aug_model_loss = 0.
-        elif batch_idx % args.add_noise_interval == 0:
+        elif batch_idx % args.arg_interval == 0:
 
             if args.aug=='GNoise':
                 x_aug = torch.from_numpy(

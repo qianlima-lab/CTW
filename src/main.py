@@ -108,7 +108,7 @@ def parse_args():
     parser.add_argument('--mixup', action='store_true', default=False, help='manifold mixup if or not')
     parser.add_argument('--mean_loss_len', type=int,default=1,help='the length of mean loss')
     parser.add_argument('--gamma', type=float, default=0.5, help='the weight of current sample loss in mean_loss_sel method')
-    parser.add_argument('--add_noise_interval', type=int, default=3,
+    parser.add_argument('--arg_interval', type=int, default=3,
                         help='the batch-interval of add noise in batch')
     parser.add_argument('--cuda_device', type=int, default=0, help='choose the cuda devcie')
     parser.add_argument('--aug', choices=['GNoise','NoAug','Oversample','Convolve','Crop','Drift','TimeWarp','Mixup'], default='NoAug')

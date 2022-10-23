@@ -2,7 +2,7 @@
 
 ############################################# Our Model: CTW ##############################################
 nohup python ./src/main.py --model CTW --epochs 300 --lr 1e-3 --label_noise 0 \
---embedding_size 32 --ni 0.3 --num_workers 1 --add_noise_interval 1 --mean_loss_len 10 --gamma 0.3 \
+--embedding_size 32 --ni 0.3 --num_workers 1 --arg_interval 1 --mean_loss_len 10 --gamma 0.3 \
 --cuda_device 0 --aug TimeWarp --auto_rate 2 --outfile CTW.csv >CTW_sym30.out 2>&1 &
 ###########################################################################################################
 
