@@ -31,6 +31,33 @@ The results are put in ```./statistic_results/```.
 
 For other examples, please refer to ```./run_sym30.sh```.
 
+## Supplementary Results
+\begin{table*}[htbp]
+  \centering
+  \caption{Methods on 128 original UCR datasets.}
+    \begin{tabular}{c|ccc}
+    \toprule
+          & Vanilla & Vanilla w/ Gaussian noise & Vanilla w/ Time-warping \\
+    \midrule
+    \#Best & 18    & 34    & \textbf{64} \\
+    Avw\_F1 & 0.793  & 0.793  & \textbf{0.804 } \\
+    Av\_Rank & 2.184  & 2.066  & \textbf{1.750 } \\
+    \bottomrule
+    \end{tabular}%
+  \label{tab:addlabel}%
+\end{table*}%
+<div align="center">
+<img src="picture/table1.png" width="70%">
+</div>
+
+<div align="center">
+<img src="picture/table2.png" width="70%">
+</div>
+
+<div align="center">
+<img src="picture/table3.png" width="70%">
+</div>
+
 ## Acknowledgement
 We adapted the following open-source code to implement the state-of-the-art algorithms to compare CTW:
 * [SIGUA](https://github.com/bhanML/SIGUA)
