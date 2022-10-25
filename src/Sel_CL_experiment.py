@@ -67,7 +67,6 @@ def parse_args(command=None):
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
     parser.add_argument('--dataset', type=str, default='CIFAR-10', help='CIFAR-10, CIFAR-100')
     parser.add_argument('--noise_type', default='asymmetric', help='symmetric or asymmetric')
-    parser.add_argument('--noise_ratio', type=float, default=0.4, help='percent of noise')
     parser.add_argument('--train_root', default='./dataset', help='root for train data')
     parser.add_argument('--out', type=str, default='./results/Sel_CL_out', help='Directory of the output')
     parser.add_argument('--experiment_name', type=str, default='Proof',

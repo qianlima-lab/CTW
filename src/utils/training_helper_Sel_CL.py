@@ -313,7 +313,7 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
 
         for epoch in range(args.ft_initial_epoch, args.ft_epoch + 1):
             st = time.time()
-            print("=================>    ", args.experiment_name, args.noise_ratio)
+            print("=================>    ", args.experiment_name, args.ni[0])
             scheduler.step()
             train_acc,train_loss,model=train_model(train_loader,  model, optimizer, epoch, args)
             print('Epoch time: {:.2f} seconds\n'.format(time.time() - st))
