@@ -41,7 +41,7 @@ def reset_rng(func):
 
 
 def timer(func):
-    """Print the runtime of the decorated function"""
+    """print the runtime of the decorated function"""
 
     @functools.wraps(func)
     def wrapper_timer(*args, **kwargs):

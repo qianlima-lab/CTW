@@ -4,6 +4,7 @@ from datetime import datetime
 import numpy as np
 
 
+
 class Saver(object):
     # TODO: find better way to get dynamically OUTPATH without git
     def __init__(self, OUTPATH, name, hierarchy='',args=None):
@@ -24,7 +25,7 @@ class Saver(object):
             noise_type=['inst','sym','asym']
             type_num = min(int(self.args.label_noise+1),2)
             now = "{}_{}_{}_{}_".format(self.args.model,self.args.aug,self.args.label_noise,
-                                     int(self.args.ni[0]*100))+now
+                                     int(self.args.ni*100))+now
         return os.path.join(self.out, self.name, self.hierarchy, now)
 
     def makedir_(self):
@@ -50,7 +51,7 @@ class Saver(object):
         return np.load(os.path.join(self.path, [filename + '.npy']))
 
     def init_log(self):
-        print(f'LOGFILE created at {self.path}')
+
         self.f = open(os.path.join(self.path, 'LOG.txt'), 'w+')
         self.f.write('Script execution time: %s\r\n' % str(datetime.now()))
         self.f.write('Script path: %s\r\n' % str(self.path))

@@ -28,7 +28,7 @@ parser.add_argument('--model', choices=['co_teaching', 'co_teaching_mloss', 'sig
 parser.add_argument('--dataset', type=str, default='CBF', help='UCR datasets')
 parser.add_argument('--datasets', type=str,nargs='+', default='CBF', help='UCR datasets')
 
-parser.add_argument('--ni', type=float, nargs='+', default=[0.5], help='label noise ratio')
+parser.add_argument('--ni', type=float, default=0.5, help='label noise ratio')
 parser.add_argument('--label_noise', type=int, default=0, help='Label noise type, sym or int for asymmetric, '
                                                                    'number as str for time-dependent noise')
 parser.add_argument('--normalization', type=str, default='batch')
@@ -36,7 +36,6 @@ parser.add_argument('--dropout', type=float, default=0.2)
 parser.add_argument('--l2penalty', type=float, default=1e-4)
 parser.add_argument('--num_workers', type=int, default=0, help='PyTorch dataloader worker. Set to 0 if debug.')
 parser.add_argument('--seed', type=int, default=0, help='RNG seed - only affects Network init')
-parser.add_argument('--n_runs', type=int, default=1, help='Number of runs')
 parser.add_argument('--classifier_dim', type=int, default=128)
 parser.add_argument('--embedding_size', type=int, default=32)
 parser.add_argument('--kernel_size', type=int, default=4)
@@ -65,11 +64,11 @@ def t_sne(xs, ys, y_clean, tsne=True, model=None, args=None,datestr='',sel_dict=
     map_color = {0: '#585EFF', 1: '#EE002B', 2: '#C791FF', 3: '#00C29F', 4: 'm', 5: 'k', 6: 'b', 7: 'chocolate',
                  8: 'darkorange', 9: 'lawngreen', 10: 'cyan', 11: 'm', 12: 'deeppink'}
     if args.label_noise == -1:
-        label_noise = 'inst{}'.format(int(args.ni[0]*100))
+        label_noise = 'inst{}'.format(int(args.ni*100))
     elif args.label_noise == 0:
-        label_noise = 'sym{}'.format(int(args.ni[0]*100))
+        label_noise = 'sym{}'.format(int(args.ni*100))
     else:
-        label_noise = 'asym{}'.format(int(args.ni[0]*100))
+        label_noise = 'asym{}'.format(int(args.ni*100))
 
     datasetname = args.dataset
     if tsne:
@@ -283,11 +282,11 @@ def t_sne_during_train(xs, ys, y_clean, tsne=True, model=None, args=None,datestr
                  8:'darkorange',9:'lawngreen',10:'cyan',11:'m',12:'deeppink'}
 
     if args.label_noise == -1:
-        label_noise = 'inst{}'.format(int(args.ni[0]*100))
+        label_noise = 'inst{}'.format(int(args.ni*100))
     elif args.label_noise == 0:
-        label_noise = 'sym{}'.format(int(args.ni[0]*100))
+        label_noise = 'sym{}'.format(int(args.ni*100))
     else:
-        label_noise = 'asym{}'.format(int(args.ni[0]*100))
+        label_noise = 'asym{}'.format(int(args.ni*100))
 
     datasetname = args.dataset
     if tsne:
@@ -423,7 +422,7 @@ def main(args):
     Y_clean=Y.copy()
     classes = len(np.unique(Y))
     args.nbins = classes
-    Y_noise, _ = flip_label(X, Y, args.ni[0], args)
+    Y_noise, _ = flip_label(X, Y, args.ni, args)
     classifier1 = NonLinClassifier(args.embedding_size, args.nbins, d_hidd=args.classifier_dim, dropout=args.dropout,
                                    norm=args.normalization)
 

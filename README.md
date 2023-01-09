@@ -25,25 +25,11 @@ The packages our code depends on are in ```./requirements.txt```.
 ## Usage
 To train CTW on 13 benchmark datasets mentioned in this paper, run
 ```bash
-nohup python ./src/main.py --model CTW --epochs 300 --lr 1e-3 --label_noise 0 --embedding_size 32 --ni 0.3 --num_workers 1 --add_noise_interval 1 --mean_loss_len 10 --gamma 0.3 --cuda_device 0 --aug TimeWarp --auto_rate 2 --outfile CTW.csv >CTW_sym30.out 2>&1 &
+nohup python ./src/main.py --model CTW --epochs 300 --lr 1e-3 --label_noise 0 --embedding_size 32 --ni 0.3 --num_workers 1 --mean_loss_len 10 --gamma 0.3 --cuda_device 0 --outfile CTW.csv >/dev/null 2>&1 &
 ```
 The results are put in ```./statistic_results/```.
 
 For other examples, please refer to ```./run_sym30.sh```.
-
-## Supplementary Results
-
-<div align="center">
-<img src="picture/table1.png" width="70%">
-</div>
-
-<div align="center">
-<img src="picture/table2.png" width="70%">
-</div>
-
-<div align="center">
-<img src="picture/table3.png" width="70%">
-</div>
 
 ## Acknowledgement
 We adapted the following open-source code to implement the state-of-the-art algorithms to compare CTW:

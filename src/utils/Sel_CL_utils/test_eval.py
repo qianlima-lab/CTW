@@ -1,4 +1,3 @@
-from __future__ import print_function
 import numpy as np
 from src.utils.Sel_CL_utils.criterion import *
 
@@ -25,8 +24,8 @@ def test_eval(args, model, device, test_loader):
             #correct += pred.eq(target.view_as(pred)).sum().item()
 
     test_loss /= len(test_loader.dataset)
-    print('\nTest set prediction branch: Average loss: {:.4f}, top1 Accuracy: {}/{} ({:.2f}%)\n'.format(
-        test_loss, correct_1, len(test_loader.dataset),
+    print('Test set prediction branch: Average loss: {:.4f}, top1 Accuracy: {}/{} ({:.2f}%)\n'.format(
+        test_loss, correct_1, len(test_loader.dbranchataset),
         100. * correct_1 / len(test_loader.dataset)))
     # print('\nTest set prediction branch: Average loss: {:.4f}, top5 Accuracy: {}/{} ({:.2f}%)\n'.format(
     #     test_loss, correct_5, len(test_loader.dataset),

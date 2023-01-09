@@ -1,5 +1,3 @@
-from __future__ import print_function
-
 import os
 import shutil
 
@@ -16,14 +14,13 @@ import time
 from sklearn.metrics import accuracy_score, f1_score
 from scipy.special import softmax
 
-
 from src.models.MultiTaskClassification import MetaModel, NonLinClassifier, MetaModel_AE
 from src.models.model import CNNAE
 from src.utils.plotting_utils import plot_results, plot_embedding
 from src.utils.saver import Saver
 from src.utils.utils import readable, reset_seed_, reset_model, flip_label, map_abg, remove_empty_dirs, \
-    evaluate_class, compute_noise_prior, to_one_hot,small_loss_criterion_auto_rate2,\
-    small_loss_criterion_without_eliminate,small_loss_criterion_auto_rate1,small_loss_criterion
+    evaluate_class, to_one_hot,small_loss_criterion_EPS,\
+    small_loss_criterion_without_EPS,select_class_by_class,small_loss_criterion
 from src.plot.visualization import t_sne,t_sne_during_train
 
 ######################################################################################################
@@ -71,31 +68,6 @@ def test_step(data_loader, model,model2=None):
 
     return accuracy, f1_weighted
 
-
-def valid_step(data_loader, model,model2=None):
-    model = model.eval()
-    if model2 is not None:
-        model2 = model2.eval()
-    global_step = 0
-    avg_accuracy = 0.
-
-    for x, y in data_loader:
-        x, y = x.to(device), y.to(device)
-
-        if model2 is not None:
-            logits1 = model(x)
-            logits2 = model2(x)
-            acc = torch.eq(torch.argmax((logits1 + logits2) / 2, 1), y)
-        else:
-            logits1 = model(x)
-            acc = torch.eq(torch.argmax(logits1 , 1), y)
-        acc = acc.cpu().numpy()
-        acc = np.mean(acc)
-        avg_accuracy += acc
-        global_step += 1
-    return avg_accuracy / global_step
-
-
 def update_reduce_step(cur_step, num_gradual, tau=0.5,args=None):
     # if cur_step > args.warmup:
     return 1.0 - tau * min((cur_step) / num_gradual, 1)
@@ -103,8 +75,7 @@ def update_reduce_step(cur_step, num_gradual, tau=0.5,args=None):
     #     return 1.0
 
 
-def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_dataset=None,
-                noise_prior=None,noise_or_not=None,saver=None):
+def train_model(model, train_loader, test_loader, args, tau,train_dataset=None,saver=None):
 
     criterion = nn.CrossEntropyLoss(reduce=False)
     optimizer = optim.Adam(model.parameters(), lr=args.lr, eps=1e-4)
@@ -113,13 +84,10 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
     train_acc_list_aug = []
     train_avg_loss_list = []
     test_acc_list = []
-    f1s = []
-    conf_ids=[]
+    test_f1s = []
     try:
         loss_all = np.zeros((args.num_training_samples, args.epochs))
 
-        max_tect_acc_among_last10 = 0
-        model_state_dict = None
         conf_num = []
         for e in range(args.epochs):
             sel_dict = {'sel_ind': [], 'lam': [], 'mix_ind': []}
@@ -130,11 +98,11 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
             # training step
             if e <= args.warmup:
                 train_accuracy, avg_loss, model_new = warmup_single_model(data_loader=train_loader,
-                                                                            model=model,
-                                                                            optimizer=optimizer,
-                                                                            criterion=criterion,
-                                                                            epoch=e,
-                                                                            loss_all=loss_all,
+                                                                          model=model,
+                                                                          optimizer=optimizer,
+                                                                          criterion=criterion,
+                                                                          epoch=e,
+                                                                          loss_all=loss_all,
                                                                           args=args)
             else:
                 if args.model in ['vanilla']:
@@ -146,7 +114,7 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
                                                                                epoch=e,
                                                                                args=args)
                 elif args.model in ['single_sel','single_aug_after_sel','single_ae_aug_after_sel','single_ae_sel']:
-                    if args.augMSE:
+                    if args.augMSE: # compute reconstruction loss of augmentation
                         train_accuracy, avg_loss, model_new = train_step_single_aug_after_sel_augMSE(
                             data_loader=train_loader,
                             model=model,
@@ -168,14 +136,11 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
                             epoch=e,
                             args=args, sel_dict=sel_dict)
 
-                    # if e in [30, 50, 70, 100, 150, 200, 250] and args.seed == 37:
-                    if args.confcsv is not None:
-                        conf_num, _ = add_to_confident_set_id(args=args,
-                                                           confident_set_id=confident_set_id.astype(int),
-                                                           train_dataset=train_dataset, epoch=e,
-                                                           conf_num=conf_num)
-
-
+                        if args.confcsv is not None: # save confident samples' id to visualize
+                            conf_num, _ = add_to_confident_set_id(args=args,
+                                                               confident_set_id=confident_set_id.astype(int),
+                                                               train_dataset=train_dataset, epoch=e,
+                                                               conf_num=conf_num)
 
                 elif args.model in ['single_ae_aug_before_sel']:
                     train_accuracy, avg_loss, model_new = train_step_single_aug_before_sel(data_loader=train_loader,
@@ -189,13 +154,11 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
                                                                                sel_dict=sel_dict)
                 elif args.model in ['single_aug','single_ae','single_ae_aug']:
                     train_accuracy, avg_loss, model_new = train_step_single_aug(data_loader=train_loader,
-                                                                                         model=model,
-                                                                                         optimizer=optimizer,
-                                                                                         loss_all=loss_all,
-                                                                                         criterion=criterion,
-                                                                                         rt=rt,
-                                                                                         epoch=e,
-                                                                                         args=args,
+                                                                                model=model,
+                                                                                optimizer=optimizer,
+                                                                                criterion=criterion,
+                                                                                epoch=e,
+                                                                                args=args,
                                                                                 sel_dict=sel_dict)
                 elif args.model in ['single_ae_aug_sel_allaug']:
                     train_accuracy, avg_loss, model_new = train_step_single_aug_sel_allaug(
@@ -211,16 +174,13 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
 
             model = model_new
 
-            if args.tsne_during_train and args.seed == 37 and e in args.tsne_epochs:
+            if args.tsne_during_train and args.seed == args.manual_seeds[0] and e in args.tsne_epochs:
                 xs, ys, _, y_clean = train_dataset.tensors
                 with torch.no_grad():
                     t_sne_during_train(xs, ys, y_clean, model=model, tsne=True, args=args,sel_dict=sel_dict,epoch=e)
 
-            # testing/valid step
+            # testing
             test_accuracy, f1 = test_step(data_loader=test_loader,
-                                      model=model)
-
-            dev_accuracy = valid_step(data_loader=valid_loader,
                                       model=model)
 
             if args.model in ['single_ae_aug_sel_allaug','single_ae_aug_before_sel','single_ae_aug_after_sel',
@@ -233,133 +193,101 @@ def train_model(model, train_loader, valid_loader, test_loader, args, tau,train_
                 train_acc_oir = train_accuracy
             train_avg_loss_list.append(avg_loss)
             test_acc_list.append(test_accuracy)
-            f1s.append(f1)
+            test_f1s.append(f1)
             # conf_ids.append(confident_set_id)
 
             print(
-                '{} epoch - Train Loss {:.4f}\tTrain accuracy {:.4f}\tDev accuracy {:.4f}\tTest accuracy {:.4f}\tReduce rate {:.4f}'.format(
+                '{} epoch - Train Loss {:.4f}\tTrain accuracy {:.4f}\tTest accuracy {:.4f}'.format(
                     e + 1,
                     avg_loss,
                     train_acc_oir,
-                    dev_accuracy,
-                    test_accuracy,
-                    rt))
+                    test_accuracy))
 
-            if args.save_model and args.epochs > 11:
-                if e >= args.epochs - 10 and max_tect_acc_among_last10 <= test_accuracy:
-                    max_tect_acc_among_last10 = test_accuracy
-                    model_state_dict=model.state_dict()
+
         if args.confcsv is not None:
-            pd.DataFrame(conf_num).to_csv(os.path.join(args.basicpath,'src','bar_info',
-                                                       args.dataset+str(args.auto_rate)+args.confcsv),mode='a',header=True)
-
-        if model_state_dict is not None: # save model
-            model_to_save_dir = os.path.join(args.basicpath, 'src', 'model_save', args.dataset)
-            os.makedirs(model_to_save_dir,exist_ok=True)
-            datestr=time.strftime(('%Y%m%d'))
-            if args.label_noise == -1:
-                label_noise = 'inst{}'.format(int(args.ni[0] * 100))
-            elif args.label_noise == 0:
-                label_noise = 'sym{}'.format(int(args.ni[0] * 100))
-            else:
-                label_noise = 'asym{}'.format(int(args.ni[0] * 100))
-            filename=os.path.join(model_to_save_dir, args.model)
-            filename_sel_dict ='{}{}_{}_{}_sel_dict.npy'.format(filename, args.aug, label_noise, datestr)
-            np.save(filename_sel_dict,sel_dict) # save sel_ind
-            filename='{}{}_{}_{}.pt'.format(filename, args.aug, label_noise, datestr)
-            torch.save(model_state_dict, filename) # save model
+            csvpath = os.path.join(args.basicpath,'src','bar_info')
+            if not os.path.exists(csvpath):
+                os.makedirs(csvpath)
+            pd.DataFrame(conf_num).to_csv(os.path.join(csvpath,args.dataset+str(args.sel_method)+args.confcsv),mode='a',header=True)
 
     except KeyboardInterrupt:
         print('*' * shutil.get_terminal_size().columns)
         print('Exiting from training early')
 
+    datestr = time.strftime(('%Y%m%d'))
     if args.plt_loss_hist:
         plot_train_loss_and_test_acc(train_avg_loss_list,test_acc_list,args,pred_precision=train_acc_list,aug_accs=train_acc_list_aug,
                                      saver=saver,save=True)
+    if args.save_model:
+        model_state_dict = model.state_dict()
+        model_to_save_dir = os.path.join(args.basicpath, 'src', 'model_save', args.dataset)
+        os.makedirs(model_to_save_dir, exist_ok=True)
 
-    if args.plot_tsne and model_state_dict is not None and args.seed==37:
+        if args.label_noise == -1:
+            label_noise = 'inst{}'.format(int(args.ni * 100))
+        elif args.label_noise == 0:
+            label_noise = 'sym{}'.format(int(args.ni * 100))
+        else:
+            label_noise = 'asym{}'.format(int(args.ni * 100))
+        filename = os.path.join(model_to_save_dir, args.model)
+        filename_sel_dict = '{}{}_{}_{}_sel_dict.npy'.format(filename, args.aug, label_noise, datestr)
+        np.save(filename_sel_dict, sel_dict)  # save sel_ind
+        filename = '{}{}_{}_{}.pt'.format(filename, args.aug, label_noise, datestr)
+        torch.save(model_state_dict, filename)  # save model
 
-        xs,ys,_,y_clean = train_dataset.tensors
-        classifier1 = NonLinClassifier(args.embedding_size, args.nbins, d_hidd=args.classifier_dim, dropout=args.dropout,
-                                       norm=args.normalization)
-
-        model = CNNAE(input_size=xs.shape[2], num_filters=args.filters, embedding_dim=args.embedding_size,
-                      seq_len=xs.shape[1], kernel_size=args.kernel_size, stride=args.stride,
-                      padding=args.padding, dropout=args.dropout, normalization=args.normalization).to(device)
-        if args.model in ['single_ae_aug_after_sel', 'single_ae', 'single_ae_sel', 'single_ae_aug',
-                          'single_ae_aug_before_sel','single_ae_aug_sel_allaug']:
-            model = MetaModel_AE(ae=model, classifier=classifier1, name='CNN').to(device)
-        elif args.model in ['single_aug_after_sel', 'single_aug', 'single_sel', 'vanilla']:
-            model = MetaModel(ae=model, classifier=classifier1, name='CNN').to(device)
-
+    if args.plot_tsne and args.seed == args.manual_seeds[0]:
+        xs, ys, _, y_clean = train_dataset.tensors
         with torch.no_grad():
+            t_sne(xs, ys, y_clean, model=model, tsne=True, args=args, datestr=datestr, sel_dict=sel_dict)
 
-            t_sne(xs, ys, y_clean,model=model, tsne=True, args=args,datestr=datestr,sel_dict=sel_dict)
-
-    training_results = dict()
-    training_results['max_valid_acc'] = np.max(test_acc_list)
-    training_results['max_valid_acc_epoch'] = np.argmax(test_acc_list)
-    training_results['avg_last_ten_valid_acc'] = np.mean(test_acc_list[-10:])
-    training_results['max_valid_f1'] = np.max(f1s)
-    training_results['max_valid_f1_epoch'] = np.argmax(f1s)
-    training_results['avg_last_ten_valid_f1'] = np.mean(f1s[-10:])
-    return model, training_results
+    test_results_last_ten_epochs = dict()
+    test_results_last_ten_epochs['last_ten_test_acc'] = test_acc_list[-10:]
+    test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
+    return model, test_results_last_ten_epochs
 
 
-def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, Y_train_clean, Y_valid_clean,
+def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
                      ni, args, saver, plt_embedding=True, plt_cm=True,mask_train=None):
 
     train_dataset = TensorDataset(torch.from_numpy(x_train).float(), torch.from_numpy(Y_train).long(),
                                   torch.from_numpy(np.arange(len(Y_train))), torch.from_numpy(Y_train_clean))
-    valid_dataset = TensorDataset(torch.from_numpy(x_valid).float(), torch.from_numpy(Y_valid).long())
     test_dataset = TensorDataset(torch.from_numpy(x_test).float(), torch.from_numpy(Y_test).long())
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False,
-                              num_workers=args.num_workers)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
                               num_workers=args.num_workers)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
                              num_workers=args.num_workers)
     train_eval_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
                                    num_workers=args.num_workers)
 
-    # compute noise prior
-    noise_prior = compute_noise_prior(Y_train,args)
-    noise_or_not = mask_train
     ######################################################################################################
     # Train model
 
-    model, training_results = train_model(model, train_loader, valid_loader, test_loader, args, ni,
-                                          train_dataset=train_dataset,noise_prior=noise_prior,noise_or_not=noise_or_not,
-                                          saver=saver)
+    model, test_results_last_ten_epochs = train_model(model, train_loader, test_loader, args, ni,
+                                          train_dataset=train_dataset,saver=saver)
     print('Train ended')
-    print("training_results = ", training_results)
 
-    ######################################################################################################
-    train_results = evaluate_class(model, x_train, Y_train, Y_train_clean, train_eval_loader, ni, saver,
-                                   'CNN', 'Train', True, plt_cm=plt_cm, plt_lables=False)
-    valid_results = evaluate_class(model, x_valid, Y_valid, Y_valid_clean, valid_loader, ni, saver,
-                                   'CNN', 'Valid', True, plt_cm=plt_cm, plt_lables=False)
+    ########################################## Eval ############################################
+
+    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
     test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
                                   'Test', True, plt_cm=plt_cm, plt_lables=False)
+    test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
+    test_results['avg_last_ten_test_f1'] = np.mean(test_results_last_ten_epochs['last_ten_test_f1'])
 
-    test_results['max_valid_acc'] = training_results['max_valid_acc']
-    test_results['max_valid_acc_epoch'] = training_results['max_valid_acc_epoch']
-    test_results['avg_last_ten_valid_acc'] = training_results['avg_last_ten_valid_acc']
-    test_results['max_valid_f1'] = training_results['max_valid_f1']
-    test_results['max_valid_f1_epoch'] = training_results['max_valid_f1_epoch']
-    test_results['avg_last_ten_valid_f1'] = training_results['avg_last_ten_valid_f1']
+    #############################################################################################
 
     if plt_embedding and args.embedding_size <= 3:
-        plot_embedding(model.encoder, train_eval_loader, valid_loader, Y_train_clean, Y_valid_clean,
-                       Y_train, Y_valid, network='CNN', saver=saver, correct=True)
+        plot_embedding(model.encoder, train_eval_loader, Y_train_clean,
+                       Y_train, network='CNN', saver=saver, correct=True)
 
     plt.close('all')
     torch.cuda.empty_cache()
-    return train_results, valid_results, test_results
+    return test_results
 
 
-def main_wrapper_single_model(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seeds=[0]):
+def main_wrapper_single_model(args, x_train, x_test, Y_train_clean, Y_test_clean, saver,seed=None):
+
     class SaverSlave(Saver):
         def __init__(self, path):
             super(Saver)
@@ -370,7 +298,6 @@ def main_wrapper_single_model(args, x_train, x_valid, x_test, Y_train_clean, Y_v
 
     classes = len(np.unique(Y_train_clean))
     args.nbins = classes
-    history = x_train.shape[1]
 
     # Network definition
     classifier1 = NonLinClassifier(args.embedding_size, classes, d_hidd=args.classifier_dim, dropout=args.dropout,
@@ -398,76 +325,40 @@ def main_wrapper_single_model(args, x_train, x_valid, x_test, Y_train_clean, Y_v
     ######################################################################################################
     print('Num Classes: ', classes)
     print('Train:', x_train.shape, Y_train_clean.shape, [(Y_train_clean == i).sum() for i in np.unique(Y_train_clean)])
-    print('Validation:', x_valid.shape, Y_valid_clean.shape,
-          [(Y_valid_clean == i).sum() for i in np.unique(Y_valid_clean)])
     print('Test:', x_test.shape, Y_test_clean.shape, [(Y_test_clean == i).sum() for i in np.unique(Y_test_clean)])
-    saver.append_str(['Train: {}'.format(x_train.shape), 'Validation:{}'.format(x_valid.shape),
+    saver.append_str(['Train: {}'.format(x_train.shape),
                       'Test: {}'.format(x_test.shape), '\r\n'])
 
     ######################################################################################################
     # Main loop
-    df_results = pd.DataFrame()
-    # seeds = np.random.choice(1000, args.n_runs, replace=False)
-    seeds = seeds
-    print("seeds = ", seeds)
+    if seed is None:
+        seed = np.random.choice(1000, 1, replace=False)
 
-    for run, seed in enumerate(seeds):
-        print()
-        print('#' * shutil.get_terminal_size().columns)
-        print('EXPERIMENT: {}/{} -- RANDOM SEED:{}'.format(run + 1, args.n_runs, seed).center(columns))
-        print('#' * shutil.get_terminal_size().columns)
-        print()
+    print('#' * shutil.get_terminal_size().columns)
+    print('RANDOM SEED:{}'.format(seed).center(columns))
+    print('#' * shutil.get_terminal_size().columns)
 
-        args.seed = seed
+    args.seed = seed
 
-        saver_loop = SaverSlave(os.path.join(saver.path, f'seed_{seed}'))
-        # saver_loop.append_str(['SEED: {}'.format(seed), '\r\n'])
+    ni = args.ni
+    saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
+    # True or false
+    print('+' * shutil.get_terminal_size().columns)
+    print('Label noise ratio: %.3f' % ni)
+    print('+' * shutil.get_terminal_size().columns)
 
-        i = 0
-        for ni in args.ni:
-            saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
-            i += 1
-            # True or false
-            print('+' * shutil.get_terminal_size().columns)
-            print('HyperRun: %d/%d' % (i, len(args.ni)))
-            print('Label noise ratio: %.3f' % ni)
-            print('+' * shutil.get_terminal_size().columns)
-            # saver.append_str(['#' * 100, 'Label noise ratio: %f' % ni])
+    reset_seed_(seed)
+    model = reset_model(model)
 
-            reset_seed_(seed)
-            model = reset_model(model)
+    Y_train, mask_train = flip_label(x_train, Y_train_clean, ni, args)
+    Y_test = Y_test_clean
 
-            Y_train, mask_train = flip_label(x_train,Y_train_clean, ni, args)
-            Y_valid, mask_valid = flip_label(x_valid,Y_valid_clean, ni, args)
-            Y_test = Y_test_clean
-
-            train_results, valid_results, test_results = train_eval_model(model, x_train, x_valid, x_test, Y_train,
-                                                                          Y_valid, Y_test, Y_train_clean,
-                                                                          Y_valid_clean,
-                                                                          ni, args, saver_slave,
-                                                                          plt_embedding=args.plt_embedding,
-                                                                          plt_cm=args.plt_cm,
-                                                                          mask_train=mask_train)
-
-            keys = list(test_results.keys())
-            test_results['noise'] = ni
-            test_results['seed'] = seed
-            test_results['correct'] = 'Co-teaching'
-            test_results['losses'] = map_abg([0, 1, 0])
-            df_results = df_results.append(test_results, ignore_index=True)
-
-        if args.plt_cm:
-            fig_title = f"CO-TEACHING -- Dataset: {args.dataset} - Model: {'CNN'} - classes:{classes} - runs:{args.n_runs} "
-            plot_results(df_results.loc[df_results.seed == seed], keys, saver_loop, x='noise', hue='correct',
-                         col='losses',
-                         kind='bar', style='whitegrid', title=fig_title)
-    if args.plt_cm:
-        # Losses column should  not change here
-        fig_title = f"CO-TEACHING -- Dataset: {args.dataset} - Model: {'CNN'} - classes:{classes} - runs:{args.n_runs} "
-        plot_results(df_results, keys, saver, x='noise', hue='correct', col='losses', kind='box', style='whitegrid',
-                     title=fig_title)
-
-
+    test_results = train_eval_model(model, x_train, x_test, Y_train,
+                                                   Y_test, Y_train_clean,
+                                                   ni, args, saver_slave,
+                                                   plt_embedding=args.plt_embedding,
+                                                   plt_cm=args.plt_cm,
+                                                   mask_train=mask_train)
     remove_empty_dirs(saver.path)
 
     return test_results
@@ -567,8 +458,8 @@ def warmup_single_model(data_loader, model, optimizer, criterion,epoch=None,
 
 
 
-def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, rt,fit=None,loss_all=None,
-               p_threshold=None, normalization=None,epoch=0,args=None,sel_dict=None,estimate_noise_rate=None):
+def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, rt,loss_all=None,
+                                    epoch=0,args=None,sel_dict=None):
     global_step = 0
     aug_step=0
     avg_accuracy = 0.
@@ -578,9 +469,9 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
     confident_set_id=np.array([])
 
 
-    for batch_idx,(x, y_hat,x_idx,y_clean) in enumerate(data_loader):
+    for batch_idx,(x, y_hat,x_idx,_) in enumerate(data_loader):
         # Forward and Backward propagation
-        x, y_hat,y_clean = x.to(device), y_hat.to(device),y_clean.to(device)
+        x, y_hat = x.to(device), y_hat.to(device)
         y = y_hat
 
         h = model.encoder(x)
@@ -597,26 +488,22 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
         if loss_all is not None:
             loss_all[x_idx,epoch]=model_loss.data.detach().clone().cpu().numpy()
 
-        if args.auto_rate in [1,3]:
-            model_loss, model_sel_idx = small_loss_criterion_auto_rate1(loss_all=loss_all, labels=y_hat, p_threshold=0.5,
+        if args.sel_method in [1,2]:
+            model_loss, model_sel_idx = select_class_by_class(loss_all=loss_all, labels=y_hat, p_threshold=0.5,
                                                                    model_loss=model_loss,args=args,
                                                                    epoch=epoch, x_idxs=x_idx)
-        elif args.auto_rate == 2:
-            model_loss, model_sel_idx = small_loss_criterion_auto_rate2(model_loss=model_loss,
+        elif args.sel_method == 3:
+            model_loss, model_sel_idx = small_loss_criterion_EPS(model_loss=model_loss,
                                                                         loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat,
-                                                                        y_clean=y_clean)
-        elif args.auto_rate == 4:
-            model_loss, model_sel_idx = small_loss_criterion_without_eliminate(model_loss=model_loss, rt=rt,
+                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat)
+        elif args.sel_method == 4:
+            model_loss, model_sel_idx = small_loss_criterion_without_EPS(model_loss=model_loss, rt=rt,
                                                         loss_all=loss_all, args=args,
                                                         epoch=epoch,x_idxs=x_idx)
         else:
             model_loss,model_sel_idx = small_loss_criterion(model_loss=model_loss, rt=rt,
                                                         loss_all=loss_all, args=args,
                                                         epoch=epoch,x_idxs=x_idx)
-
-
-
 
         # data Augmentation after selecting clean samples
         if args.aug == 'NoAug':
@@ -654,8 +541,8 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
                 aug_h = lam * h[model_sel_idx] + (1 - lam) * h[model_sel_idx][index, :]
                 ta, tb = y_hat[model_sel_idx], y_hat[model_sel_idx][index]
                 outx_aug = model.classifier(aug_h.squeeze(-1))
-                y_clean_aug =torch.argmax(torch.from_numpy(lam*to_one_hot(args.nbins,y_clean[model_sel_idx].cpu().numpy())+
-                               (1-lam)*to_one_hot(args.nbins,y_clean[model_sel_idx][index].cpu().numpy())),dim=1).to(device)
+                y_hat_aug =torch.argmax(torch.from_numpy(lam*to_one_hot(args.nbins,y_hat[model_sel_idx].cpu().numpy())+
+                               (1-lam)*to_one_hot(args.nbins,y_hat[model_sel_idx][index].cpu().numpy())),dim=1).to(device)
                 model_loss_mix = lam * criterion(outx_aug, ta) + (1 - lam) * criterion(outx_aug, tb)
             else:
                 pass
@@ -684,17 +571,14 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
                     else:
                         aug_recon_loss = 0.
                     outx_aug=model.classifier(aug_h.squeeze(-1))
-                    y_clean_aug = y_clean[model_sel_idx]
+                    y_hat_aug = y_hat[model_sel_idx]
                     aug_model_loss = criterion(outx_aug, y_hat[model_sel_idx]).sum()
 
             if epoch==args.epochs-1 or epoch in args.tsne_epochs:
                 sel_dict['sel_ind'].append(x_idx[model_sel_idx].cpu().numpy())
 
-
-            avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_clean_aug).float().mean().cpu().numpy()
+            avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_hat_aug).float().mean().cpu().numpy()
             aug_step+=1
-
-
 
         else:
             aug_model_loss = 0.
@@ -712,7 +596,7 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
         avg_loss += model_loss.item()
 
         # Compute accuracy
-        acc1 = torch.eq(torch.argmax(out[model_sel_idx], 1), y[model_sel_idx]).float()
+        acc1 = torch.eq(torch.argmax(out, 1), y).float()
         avg_accuracy += acc1.mean().cpu().numpy()
 
         global_step += 1
@@ -726,9 +610,7 @@ def train_step_single_aug_after_sel(data_loader, model, optimizer,  criterion, r
              aug_step = 1.
         return (avg_accuracy / global_step, avg_accuracy_aug / aug_step), avg_loss / global_step, model,confident_set_id
 
-def train_step_single_aug(data_loader, model, optimizer, criterion,
-                                    loss_all=None,rt=None,fit=None,p_threshold=None, normalization=None,
-                                       epoch=0,args=None,sel_dict=None):
+def train_step_single_aug(data_loader, model, optimizer, criterion,epoch=0,args=None,sel_dict=None):
     global_step = 0
     aug_step = 0
     avg_accuracy = 0.
@@ -737,9 +619,9 @@ def train_step_single_aug(data_loader, model, optimizer, criterion,
 
     model = model.train()
 
-    for batch_idx,(x, y_hat,x_idx,y_clean) in enumerate(data_loader):
+    for batch_idx,(x, y_hat,x_idx,_) in enumerate(data_loader):
         # Forward and Backward propagation
-        x, y_hat,y_clean = x.to(device), y_hat.to(device),y_clean.to(device)
+        x, y_hat = x.to(device), y_hat.to(device)
         y = y_hat
 
         h = model.encoder(x)
@@ -786,9 +668,9 @@ def train_step_single_aug(data_loader, model, optimizer, criterion,
                 mix_h = lam * h + (1 - lam) * h[index, :]
                 ta, tb = y_hat, y_hat[index]
                 outx_aug = model.classifier(mix_h.squeeze(-1))
-                y_clean_aug = torch.argmax(torch.from_numpy(lam * to_one_hot(args.nbins, y_clean.cpu().numpy()) +
+                y_hat_aug = torch.argmax(torch.from_numpy(lam * to_one_hot(args.nbins, y_hat.cpu().numpy()) +
                                                             (1 - lam) * to_one_hot(args.nbins,
-                                                                                   y_clean[index].cpu().numpy())),
+                                                                                   y_hat[index].cpu().numpy())),
                                            dim=1).to(device)
 
                 model_loss_mix = lam * criterion(outx_aug, ta) + (1 - lam) * criterion(outx_aug, tb)
@@ -803,13 +685,13 @@ def train_step_single_aug(data_loader, model, optimizer, criterion,
                     sel_dict['mix_ind'].append(x_idx[index].cpu().numpy())
             else:
                 outx_aug = model(x_aug)
-                y_clean_aug = y_clean
+                y_hat_aug = y_hat
 
                 aug_model_loss = criterion(outx_aug, y_hat).sum()
 
             if epoch==args.epochs-1:
                 sel_dict['sel_ind'].append(x_idx.cpu().numpy())
-            avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_clean_aug).float().mean().cpu().numpy()
+            avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_hat_aug).float().mean().cpu().numpy()
             aug_step += 1
         else:
             aug_model_loss = 0.
@@ -836,8 +718,8 @@ def train_step_single_aug(data_loader, model, optimizer, criterion,
         return (avg_accuracy / global_step, avg_accuracy_aug / aug_step), avg_loss / global_step, model
 
 
-def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, rt,fit=None,loss_all=None,
-               p_threshold=None, normalization=None,epoch=0,args=None,sel_dict=None):
+def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, rt,loss_all=None,epoch=0,
+                                     args=None,sel_dict=None):
     global_step = 0
     aug_step=0
     avg_accuracy = 0.
@@ -845,9 +727,9 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
     avg_loss = 0.
     model = model.train()
 
-    for batch_idx,(x, y_hat,x_idx,y_clean) in enumerate(data_loader):
+    for batch_idx,(x, y_hat,x_idx,_) in enumerate(data_loader):
         # Forward and Backward propagation
-        x, y_hat,y_clean = x.to(device), y_hat.to(device),y_clean.to(device)
+        x, y_hat = x.to(device), y_hat.to(device)
         y = y_hat
 
         h = model.encoder(x)
@@ -864,18 +746,24 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
         if loss_all is not None:
             loss_all[x_idx,epoch]=model_loss.data.detach().clone().cpu().numpy()
 
-        if args.auto_rate == 1:
-            model_loss, sel_index = small_loss_criterion_auto_rate1(model_loss=model_loss,
-                                                                        loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat)
-        elif args.auto_rate == 2:
-            model_loss, sel_index = small_loss_criterion_auto_rate2(model_loss=model_loss,
-                                                                        loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat)
+        if args.sel_method in [1, 2]:
+            model_loss, model_sel_idx = select_class_by_class(loss_all=loss_all, labels=y_hat,
+                                                                        p_threshold=0.5,
+                                                                        model_loss=model_loss, args=args,
+                                                                        epoch=epoch, x_idxs=x_idx)
+        elif args.sel_method == 3:
+            model_loss, model_sel_idx = small_loss_criterion_EPS(model_loss=model_loss,
+                                                                 loss_all=loss_all, args=args,
+                                                                 epoch=epoch, x_idxs=x_idx, labels=y_hat)
+        elif args.sel_method == 4:
+            model_loss, model_sel_idx = small_loss_criterion_without_EPS(model_loss=model_loss, rt=rt,
+                                                                         loss_all=loss_all, args=args,
+                                                                         epoch=epoch, x_idxs=x_idx)
         else:
-            model_loss, sel_index = small_loss_criterion(model_loss=model_loss, rt=rt,
+            model_loss, model_sel_idx = small_loss_criterion(model_loss=model_loss, rt=rt,
                                                              loss_all=loss_all, args=args,
                                                              epoch=epoch, x_idxs=x_idx)
+        
 
 
         # data Augmentation after selecting clean samples
@@ -914,8 +802,8 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
                 mix_h = lam * h + (1 - lam) * h[index, :]
                 ta, tb = y_hat, y_hat[index]
                 outx_aug = model.classifier(mix_h.squeeze(-1))
-                y_clean_aug = torch.argmax(torch.from_numpy(lam * to_one_hot(args.nbins, y_clean.cpu().numpy()) +
-                                        (1 - lam) * to_one_hot(args.nbins, y_clean[index].cpu().numpy())),
+                y_hat_aug = torch.argmax(torch.from_numpy(lam * to_one_hot(args.nbins, y_hat.cpu().numpy()) +
+                                        (1 - lam) * to_one_hot(args.nbins, y_hat[index].cpu().numpy())),
                                         dim=1).to(device)
 
                 model_loss_mix = lam * criterion(outx_aug, ta) + (1 - lam) * criterion(outx_aug, tb)
@@ -929,14 +817,14 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
                     sel_dict['mix_ind'].append(x_idx[index].cpu().numpy())
             else:
                 outx_aug = model(x_aug)
-                y_clean_aug=y_clean
+                y_hat_aug=y_hat
 
                 aug_model_loss = criterion(outx_aug, y_hat)
             aug_model_loss, aug_sel_index = small_loss_criterion(model_loss=aug_model_loss, rt=rt, args=args,
                                                  epoch=epoch, x_idxs=x_idx)
             if epoch==args.epochs-1 or epoch in args.tsne_epochs:
                 sel_dict['sel_ind'].append(x_idx.cpu().numpy())
-            avg_accuracy_aug += torch.eq(torch.argmax(outx_aug[aug_sel_index], 1), y_clean_aug[aug_sel_index]).float().mean().cpu().numpy()
+            avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_hat_aug).float().mean().cpu().numpy()
             aug_step += 1
 
         else:
@@ -953,7 +841,7 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
         avg_loss += model_loss.item()
 
         # Compute accuracy
-        acc = torch.eq(torch.argmax(out[sel_index], 1), y[sel_index]).float()
+        acc = torch.eq(torch.argmax(out, 1), y).float()
         avg_accuracy += acc.mean().cpu().numpy()
         global_step += 1
     if args.aug=='NoAug':
@@ -961,8 +849,8 @@ def train_step_single_aug_before_sel(data_loader, model, optimizer,  criterion, 
     else:
         return (avg_accuracy / global_step, avg_accuracy_aug / aug_step), avg_loss / global_step, model
 
-def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  criterion, rt,fit=None,loss_all=None,
-               p_threshold=None, normalization=None,epoch=0,args=None,sel_dict=None):
+def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  criterion, rt,loss_all=None,
+                                           epoch=0,args=None,sel_dict=None):
     global_step = 0
     aug_step=0
     avg_accuracy = 0.
@@ -971,9 +859,9 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
     if_get_feature = True
     model = model.train()
 
-    for batch_idx,(x, y_hat,x_idx,y_clean) in enumerate(data_loader):
+    for batch_idx,(x, y_hat,x_idx,_) in enumerate(data_loader):
         # Forward and Backward propagation
-        x, y_hat,y_clean = x.to(device), y_hat.to(device),y_clean.to(device)
+        x, y_hat = x.to(device), y_hat.to(device)
         y = y_hat
 
         h = model.encoder(x)
@@ -990,18 +878,23 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
         if loss_all is not None:
             loss_all[x_idx,epoch]=model_loss.data.detach().clone().cpu().numpy()
 
-        if args.auto_rate == 1:
-            model_loss, model_sel_idx = small_loss_criterion_auto_rate1(model_loss=model_loss,
-                                                                        loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat)
-        elif args.auto_rate == 2:
-            model_loss, model_sel_idx = small_loss_criterion_auto_rate2(model_loss=model_loss,
-                                                                        loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat,y_clean=y_clean)
+        if args.sel_method in [1, 2]:
+            model_loss, model_sel_idx = select_class_by_class(loss_all=loss_all, labels=y_hat,
+                                                                        p_threshold=0.5,
+                                                                        model_loss=model_loss, args=args,
+                                                                        epoch=epoch, x_idxs=x_idx)
+        elif args.sel_method == 3:
+            model_loss, model_sel_idx = small_loss_criterion_EPS(model_loss=model_loss,
+                                                                 loss_all=loss_all, args=args,
+                                                                 epoch=epoch, x_idxs=x_idx, labels=y_hat)
+        elif args.sel_method == 4:
+            model_loss, model_sel_idx = small_loss_criterion_without_EPS(model_loss=model_loss, rt=rt,
+                                                                         loss_all=loss_all, args=args,
+                                                                         epoch=epoch, x_idxs=x_idx)
         else:
-            model_loss,model_sel_idx = small_loss_criterion(model_loss=model_loss, rt=rt,
-                                                        loss_all=loss_all, args=args,
-                                                        epoch=epoch,x_idxs=x_idx)
+            model_loss, model_sel_idx = small_loss_criterion(model_loss=model_loss, rt=rt,
+                                                             loss_all=loss_all, args=args,
+                                                             epoch=epoch, x_idxs=x_idx)
 
         # data Augmentation after selecting clean samples
         if args.aug == 'NoAug':
@@ -1038,8 +931,8 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
                 with torch.no_grad():
                     ta, tb = (torch.softmax(out).detch())[model_sel_idx], (torch.softmax(out).detch())[model_sel_idx][index]
                 outx_aug = model.classifier(mix_h.squeeze(-1))
-                y_clean_aug =torch.argmax(torch.from_numpy(lam*to_one_hot(args.nbins,y_clean[model_sel_idx].cpu().numpy())+
-                               (1-lam)*to_one_hot(args.nbins,y_clean[model_sel_idx][index].cpu().numpy())),dim=1).to(device)
+                y_hat_aug =torch.argmax(torch.from_numpy(lam*to_one_hot(args.nbins,y_hat[model_sel_idx].cpu().numpy())+
+                               (1-lam)*to_one_hot(args.nbins,y_hat[model_sel_idx][index].cpu().numpy())),dim=1).to(device)
                 model_loss_mix = lam * ((outx_aug- ta)**2) + (1 - lam) * ((outx_aug- tb)**2)
             else:
                 pass
@@ -1054,7 +947,7 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
                     aug_model_loss = 0.
                 else:
                     outx_aug = model(x_aug)
-                    y_clean_aug = y_clean[model_sel_idx]
+                    y_hat_aug = y_hat[model_sel_idx]
                     probs_u = torch.softmax(outx_aug, dim=1)
                     with torch.no_grad():
                         targets_u = torch.softmax(out.detach(), dim=1)
@@ -1065,7 +958,7 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
                 sel_dict['sel_ind'].append(x_idx[model_sel_idx].cpu().numpy())
 
             if len(x_aug)!=1:
-                avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_clean_aug).float().mean().cpu().numpy()
+                avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_hat_aug).float().mean().cpu().numpy()
                 aug_step+=1
             else:
                 avg_accuracy_aug = 0.
@@ -1083,7 +976,7 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
         avg_loss += model_loss.item()
 
         # Compute accuracy
-        acc1 = torch.eq(torch.argmax(out[model_sel_idx], 1), y[model_sel_idx]).float()
+        acc1 = torch.eq(torch.argmax(out, 1), y).float()
         avg_accuracy += acc1.mean().cpu().numpy()
 
         global_step += 1
@@ -1095,8 +988,8 @@ def train_step_single_aug_after_sel_augMSE(data_loader, model, optimizer,  crite
              aug_step = 1.
         return (avg_accuracy / global_step, avg_accuracy_aug / aug_step), avg_loss / global_step, model
 
-def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, rt,fit=None,loss_all=None,
-               p_threshold=None, normalization=None,epoch=0,args=None,sel_dict=None):
+def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, rt,loss_all=None,
+                                     epoch=0,args=None,sel_dict=None):
     global_step = 0
     aug_step=0
     avg_accuracy = 0.
@@ -1104,9 +997,9 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
     avg_loss = 0.
     model = model.train()
 
-    for batch_idx,(x, y_hat,x_idx,y_clean) in enumerate(data_loader):
+    for batch_idx,(x, y_hat,x_idx,_) in enumerate(data_loader):
         # Forward and Backward propagation
-        x, y_hat,y_clean = x.to(device), y_hat.to(device),y_clean.to(device)
+        x, y_hat = x.to(device), y_hat.to(device)
         y = y_hat
 
         h = model.encoder(x)
@@ -1123,18 +1016,23 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
         if loss_all is not None:
             loss_all[x_idx,epoch]=model_loss.data.detach().clone().cpu().numpy()
 
-        if args.auto_rate == 1:
-            model_loss, model_sel_idx = small_loss_criterion_auto_rate1(model_loss=model_loss,
-                                                                        loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat)
-        elif args.auto_rate == 2:
-            model_loss, model_sel_idx = small_loss_criterion_auto_rate2(model_loss=model_loss,
-                                                                        loss_all=loss_all, args=args,
-                                                                        epoch=epoch, x_idxs=x_idx, labels=y_hat,y_clean=y_clean)
+        if args.sel_method in [1, 2]:
+            model_loss, model_sel_idx = select_class_by_class(loss_all=loss_all, labels=y_hat,
+                                                                        p_threshold=0.5,
+                                                                        model_loss=model_loss, args=args,
+                                                                        epoch=epoch, x_idxs=x_idx)
+        elif args.sel_method == 3:
+            model_loss, model_sel_idx = small_loss_criterion_EPS(model_loss=model_loss,
+                                                                 loss_all=loss_all, args=args,
+                                                                 epoch=epoch, x_idxs=x_idx, labels=y_hat)
+        elif args.sel_method == 4:
+            model_loss, model_sel_idx = small_loss_criterion_without_EPS(model_loss=model_loss, rt=rt,
+                                                                         loss_all=loss_all, args=args,
+                                                                         epoch=epoch, x_idxs=x_idx)
         else:
-            model_loss,model_sel_idx = small_loss_criterion(model_loss=model_loss, rt=rt,
-                                                        loss_all=loss_all, args=args,
-                                                        epoch=epoch,x_idxs=x_idx)
+            model_loss, model_sel_idx = small_loss_criterion(model_loss=model_loss, rt=rt,
+                                                             loss_all=loss_all, args=args,
+                                                             epoch=epoch, x_idxs=x_idx)
 
         if args.aug == 'NoAug':
             aug_model_loss = 0.
@@ -1170,8 +1068,8 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
                 with torch.no_grad():
                     ta, tb = (torch.softmax(out).detch()), (torch.softmax(out).detch())[index]
                 outx_aug = model.classifier(mix_h.squeeze(-1))
-                y_clean_aug =torch.argmax(torch.from_numpy(lam*to_one_hot(args.nbins,y_clean.cpu().numpy())+
-                               (1-lam)*to_one_hot(args.nbins,y_clean[index].cpu().numpy())),dim=1).to(device)
+                y_hat_aug =torch.argmax(torch.from_numpy(lam*to_one_hot(args.nbins,y_hat.cpu().numpy())+
+                               (1-lam)*to_one_hot(args.nbins,y_hat[index].cpu().numpy())),dim=1).to(device)
                 model_loss_mix = lam * ((outx_aug - ta) ** 2) + (1 - lam) * ((outx_aug - tb) ** 2)
             else:
                 pass
@@ -1186,7 +1084,7 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
                     aug_model_loss = 0.
                 else:
                     outx_aug = model(x_aug)
-                    y_clean_aug = y_clean
+                    y_hat_aug = y_hat
                     probs_u = torch.softmax(outx_aug, dim=1)
                     with torch.no_grad():
                         targets_u = torch.softmax(out.detach(), dim=1)
@@ -1196,7 +1094,7 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
                 sel_dict['sel_ind'].append(x_idx[model_sel_idx].cpu().numpy())
 
             if len(x_aug)!=1:
-                avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_clean_aug).float().mean().cpu().numpy()
+                avg_accuracy_aug += torch.eq(torch.argmax(outx_aug, 1), y_hat_aug).float().mean().cpu().numpy()
                 aug_step+=1
             else:
                 avg_accuracy_aug = 0.
@@ -1214,7 +1112,7 @@ def train_step_single_aug_sel_allaug(data_loader, model, optimizer,  criterion, 
         avg_loss += model_loss.item()
 
         # Compute accuracy
-        acc1 = torch.eq(torch.argmax(out[model_sel_idx], 1), y[model_sel_idx]).float()
+        acc1 = torch.eq(torch.argmax(out, 1), y).float()
         avg_accuracy += acc1.mean().cpu().numpy()
 
         global_step += 1
@@ -1236,9 +1134,9 @@ def add_to_confident_set_id(args=None,confident_set_id=None,train_dataset=None,e
     for i in range(args.nbins):
         confnum_row = dict()
         confnum_row['epoch'] = epoch
-        if args.auto_rate == 2:
+        if args.sel_method == 3:
             confnum_row['method']='Our model'
-        else:
+        else: # sel_method in [1,2]
             confnum_row['method'] = 'Class by Class'
         confnum_row['label']=i
         confnum_row['total']=sum(ys[confident_set_id]==i)

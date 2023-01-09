@@ -633,34 +633,6 @@ def compute_loss_set(args, model, device, data_loader):
         all_losses = torch.cat((all_losses, idx_loss.cpu()))
     return all_losses.data.numpy()
 
-
-def val_cleaning(args, model, device, val_loader):
-    model.eval()
-    loss_per_batch = []
-    acc_val_per_batch = []
-    val_loss = 0
-    correct = 0
-    with torch.no_grad():
-        for batch_idx, (data, target) in enumerate(val_loader):
-            data, target = data.to(device), target.to(device)
-            output = model(data)
-            output = F.log_softmax(output, dim=1)
-            val_loss += F.nll_loss(output, target, reduction='sum').item()
-            loss_per_batch.append(F.nll_loss(output, target).item())
-            pred = output.max(1, keepdim=True)[1]  # get the index of the max log-probability
-            correct += pred.eq(target.view_as(pred)).sum().item()
-            acc_val_per_batch.append(100. * correct / ((batch_idx + 1) * args.val_batch_size))
-
-    val_loss /= len(val_loader.dataset)
-    print('\nValidation set: Average loss: {:.4f}, Accuracy: {}/{} ({:.0f}%)\n'.format(
-        val_loss, correct, len(val_loader.dataset),
-        100. * correct / len(val_loader.dataset)))
-
-    loss_per_epoch = [np.average(loss_per_batch)]
-    acc_val_per_epoch = [np.average(acc_val_per_batch)]
-    return (loss_per_epoch, acc_val_per_epoch)
-
-
 ################### CODE FOR THE BETA MODEL  ########################
 
 def weighted_mean(x, w):
@@ -767,7 +739,7 @@ def train_model(model, train_loader, valid_loader, test_loader, mixup, bootbeta,
     milestones = args.M
     num_classes = args.nbins
     test_acc_list = []
-    f1s = []
+    test_f1s = []
 
     print('-' * shutil.get_terminal_size().columns)
     s = 'TRAINING MODEL {} WITH {} MixUp - {} BootBeta'.format(network, mixup, bootbeta).center(
@@ -888,7 +860,7 @@ def train_model(model, train_loader, valid_loader, test_loader, mixup, bootbeta,
             # loss_per_epoch, acc_val_per_epoch_i = test_cleaning(args, model, device, test_loader)
             test_acc, f1 = test_step(test_loader, model)
             test_acc_list.append(test_acc)
-            f1s.append(f1)
+            test_f1s.append(f1)
 
     except KeyboardInterrupt:
         print('*' * shutil.get_terminal_size().columns)
@@ -905,14 +877,11 @@ def train_model(model, train_loader, valid_loader, test_loader, mixup, bootbeta,
     # np.save(acc_npy_path, test_acc_list)
     # np.save(f1_npy_path, f1s)
 
-    training_results = dict()
-    training_results['max_valid_acc'] = np.max(test_acc_list)
-    training_results['max_valid_acc_epoch'] = np.argmax(test_acc_list)
-    training_results['avg_last_ten_valid_acc'] = np.mean(test_acc_list[-10:])
-    training_results['max_valid_f1'] = np.max(f1s)
-    training_results['max_valid_f1_epoch'] = np.argmax(f1s)
-    training_results['avg_last_ten_valid_f1'] = np.mean(f1s[-10:])
-    return model, training_results
+    test_results_last_ten_epochs = dict()
+    test_results_last_ten_epochs['last_ten_test_acc'] = test_acc_list[-10:]
+    test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
+
+    return model, test_results_last_ten_epochs
 
 
 def eval_model(model, loader, list_loss, coeffs):
@@ -963,25 +932,19 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
 
     ######################################################################################################
     # Train model
-    model, training_results = train_model(model, train_loader, valid_loader, test_loader, mixup, bootbeta, args, saver)
+    model, test_results_last_ten_epochs = train_model(model, train_loader, valid_loader, test_loader, mixup, bootbeta, args, saver)
     print('Train ended')
-    # print('Train ended')
-    # print("training_results = ", training_results)
+    # print("test_results = ", test_results)
 
-    ######################################################################################################
-    train_results = evaluate_class(model, x_train, Y_train, Y_train_clean, train_eval_loader, ni, saver,
-                                   'CNN', 'Train', correct_labels, plt_cm=plt_cm, plt_lables=False)
-    valid_results = evaluate_class(model, x_valid, Y_valid, Y_valid_clean, valid_loader, ni, saver,
-                                   'CNN', 'Valid', correct_labels, plt_cm=plt_cm, plt_lables=False)
+    ########################################## Eval ############################################
+
+    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
     test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
                                   'Test', correct_labels, plt_cm=plt_cm, plt_lables=False)
+    test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
+    test_results['avg_last_ten_test_f1'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
 
-    test_results['max_valid_acc'] = training_results['max_valid_acc']
-    test_results['max_valid_acc_epoch'] = training_results['max_valid_acc_epoch']
-    test_results['avg_last_ten_valid_acc'] = training_results['avg_last_ten_valid_acc']
-    test_results['max_valid_f1'] = training_results['max_valid_f1']
-    test_results['max_valid_f1_epoch'] = training_results['max_valid_f1_epoch']
-    test_results['avg_last_ten_valid_f1'] = training_results['avg_last_ten_valid_f1']
+    ###############################################################################################
 
     if plt_embedding and args.embedding_size <= 3:
         plot_embedding(model.encoder, train_eval_loader, valid_loader, Y_train_clean, Y_valid_clean,
@@ -989,10 +952,10 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
 
     plt.close('all')
     torch.cuda.empty_cache()
-    return train_results, valid_results, test_results
+    return test_results
 
 
-def main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seeds=[0]):
+def main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seed=None):
     class SaverSlave(Saver):
         def __init__(self, path):
             super(Saver)
@@ -1027,100 +990,67 @@ def main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y
     ######################################################################################################
     print('Num Classes: ', classes)
     print('Train:', x_train.shape, Y_train_clean.shape, [(Y_train_clean == i).sum() for i in np.unique(Y_train_clean)])
-    print('Validation:', x_valid.shape, Y_valid_clean.shape,
-          [(Y_valid_clean == i).sum() for i in np.unique(Y_valid_clean)])
     print('Test:', x_test.shape, Y_test_clean.shape, [(Y_test_clean == i).sum() for i in np.unique(Y_test_clean)])
-    saver.append_str(['Train: {}'.format(x_train.shape), 'Validation:{}'.format(x_valid.shape),
-                      'Test: {}'.format(x_test.shape), '\r\n'])
+    saver.append_str(['Train: {}'.format(x_train.shape), 'Test: {}'.format(x_test.shape), '\r\n'])
 
     ######################################################################################################
     # Main loop
-    df_results = pd.DataFrame()
-    # seeds = np.random.choice(1000, args.n_runs, replace=False)
+    if seed is None: # if no manual seed given
+        seed = np.random.choice(1000, 1, replace=False)
+    args.seed = seed
 
-    for run, seed in enumerate(seeds):
-        print()
-        print('#' * shutil.get_terminal_size().columns)
-        print('EXPERIMENT: {}/{} -- RANDOM SEED:{}'.format(run + 1, args.n_runs, seed).center(columns))
-        print('#' * shutil.get_terminal_size().columns)
-        print()
+    print()
+    print('#' * shutil.get_terminal_size().columns)
+    print('RANDOM SEED:{}'.format(seed).center(columns))
+    print('#' * shutil.get_terminal_size().columns)
+    print()
 
-        args.seed = seed
+    reset_seed_(seed)
+    model = reset_model(model)
+    # torch.save(model.state_dict(), os.path.join(saver.path, 'initial_weight.pt'))
 
-        reset_seed_(seed)
-        model = reset_model(model)
-        # torch.save(model.state_dict(), os.path.join(saver.path, 'initial_weight.pt'))
+    test_results_main = collections.defaultdict(list)
+    test_corrected_results_main = collections.defaultdict(list)
+    saver_loop = SaverSlave(os.path.join(saver.path, f'seed_{seed}'))
+    # saver_loop.append_str(['SEED: {}'.format(seed), '\r\n'])
 
-        test_results_main = collections.defaultdict(list)
-        test_corrected_results_main = collections.defaultdict(list)
-        saver_loop = SaverSlave(os.path.join(saver.path, f'seed_{seed}'))
-        # saver_loop.append_str(['SEED: {}'.format(seed), '\r\n'])
+    ni = args.ni
+    saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
 
-        i = 0
-        for ni in args.ni:
-            saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
-            for correct_labels in args.correct:
-                i += 1
-                # True or false
-                print('+' * shutil.get_terminal_size().columns)
-                print('HyperRun: %d/%d' % (i, len(args.ni) * len(args.correct)))
-                print('Label noise ratio: %.3f' % ni)
-                print('Correct labels:', correct_labels)
-                print('+' * shutil.get_terminal_size().columns)
-                # saver.append_str(['#' * 100, 'Label noise ratio: %f' % ni, 'Correct Labels: %s' % correct_labels])
+    correct_labels = args.correct
 
-                reset_seed_(seed)
-                model = reset_model(model)
+    # True or false
+    print('+' * shutil.get_terminal_size().columns)
+    print('Label noise ratio: %.3f' % ni)
+    print('Correct labels:', correct_labels)
+    print('+' * shutil.get_terminal_size().columns)
+    # saver.append_str(['#' * 100, 'Label noise ratio: %f' % ni, 'Correct Labels: %s' % correct_labels])
 
-                Y_train, mask_train = flip_label(x_train,Y_train_clean, ni * .01, args=args)
-                Y_valid, mask_valid = flip_label(x_valid,Y_valid_clean, ni * .01, args=args)
-                Y_test = Y_test_clean
+    reset_seed_(seed)
+    model = reset_model(model)
 
-                if correct_labels.lower() == 'none':
-                    mixup, bootbeta = 'None', 'None'
-                elif correct_labels == 'Mixup':
-                    mixup = 'Static'
-                    bootbeta = 'None'
-                else:
-                    mixup = args.Mixup
-                    bootbeta = args.BootBeta
+    Y_train, mask_train = flip_label(x_train, Y_train_clean, ni, args=args)
+    Y_valid, mask_valid = flip_label(x_valid, Y_valid_clean, ni, args=args)
+    Y_test = Y_test_clean
 
-                # Re-load initial weights
-                # model.load_state_dict(torch.load(os.path.join(saver.path, 'initial_weight.pt')))
+    if correct_labels.lower() == 'none':
+        mixup, bootbeta = 'None', 'None'
+    elif correct_labels == 'Mixup':
+        mixup = 'Static'
+        bootbeta = 'None'
+    else:
+        mixup = args.Mixup
+        bootbeta = args.BootBeta
 
-                train_results, valid_results, test_results = train_eval_model(model, x_train, x_valid, x_test, Y_train,
-                                                                              Y_valid, Y_test, Y_train_clean,
-                                                                              Y_valid_clean,
-                                                                              ni, args, mixup, bootbeta, saver_slave,
-                                                                              correct_labels=correct_labels,
-                                                                              plt_embedding=args.plt_embedding,
-                                                                              plt_cm=args.plt_cm)
+    # Re-load initial weights
+    # model.load_state_dict(torch.load(os.path.join(saver.path, 'initial_weight.pt')))
 
-                keys = list(test_results.keys())
-                test_results['noise'] = ni * .01
-                test_results['seed'] = seed
-                test_results['correct'] = str(correct_labels)
-                test_results['losses'] = map_abg([0, 1, 0])
-                df_results.append(test_results, ignore_index=True)
+    test_results = train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, Y_train_clean,
+                                    Y_valid_clean, ni, args, mixup, bootbeta, saver_slave,
+                                    correct_labels=correct_labels,
+                                    plt_embedding=args.plt_embedding,
+                                    plt_cm=args.plt_cm)
 
-        if args.plt_cm:
-            fig_title = f"Dataset: {args.dataset} - Model: {'CNN'} - classes:{classes} - runs:{args.n_runs} " \
-                        f"- MixUp:{args.Mixup} - BootBeta:{args.BootBeta}"
-            plot_results(df_results.loc[df_results.seed == seed], keys, saver_loop, x='noise', hue='correct',
-                         col='losses',
-                         kind='bar', style='whitegrid', title=fig_title)
-
-    if args.plt_cm:
-        # Losses column should  not change here
-        fig_title = f"Dataset: {args.dataset} - Model: {'CNN'} - classes:{classes} - runs:{args.n_runs} " \
-                    f"- MixUp:{args.Mixup} - BootBeta:{args.BootBeta}"
-        plot_results(df_results, keys, saver, x='noise', hue='correct', col='losses', kind='box', style='whitegrid',
-                     title=fig_title)
-
-    # boxplot_results(df_results, keys, classes, 'CNN', args.Mixup, args.BootBeta, saver)
-
-    # results_summary = df_results.groupby(['noise', 'correct'])[keys].describe().T
-    # saver.append_str(['Results main summary', results_summary])
 
     remove_empty_dirs(saver.path)
 

@@ -16,7 +16,7 @@ def unpickle(file):
         dict = cPickle.load(fo, encoding='latin1')
     return dict
 
-class cifar_dataset(Dataset): 
+class TS_dataset(Dataset):
     def __init__(self, dataset, r, transform, mode,train_dataset,test_dataset, noise_file='', pred=[], probability=[], log=''):
         
         self.r = r # noise ratio
@@ -116,7 +116,7 @@ class dividemix_dataloader():
             return trainloader
                                      
         elif mode=='train':
-            labeled_dataset = cifar_dataset(dataset=self.dataset, r=self.r,
+            labeled_dataset = TS_dataset(dataset=self.dataset, r=self.r,
                                             transform=self.transform_train, mode="labeled",
                                              pred=pred, probability=prob,train_dataset=self.train_dataset,
                                             test_dataset=self.test_dataset)
@@ -126,7 +126,7 @@ class dividemix_dataloader():
                 shuffle=True,
                 num_workers=self.num_workers)   
             
-            unlabeled_dataset = cifar_dataset(dataset=self.dataset,
+            unlabeled_dataset = TS_dataset(dataset=self.dataset,
                                               r=self.r, transform=self.transform_train,
                                               mode="unlabeled", pred=pred,train_dataset=self.train_dataset,
                                               test_dataset=self.test_dataset)
@@ -142,7 +142,7 @@ class dividemix_dataloader():
             return labeled_trainloader, unlabeled_trainloader
         
         elif mode=='test':
-            test_dataset = cifar_dataset(dataset=self.dataset, r=self.r,
+            test_dataset = TS_dataset(dataset=self.dataset, r=self.r,
                                          transform=self.transform_test, mode='test',train_dataset=self.train_dataset,
                                          test_dataset=self.test_dataset)
             test_loader = DataLoader(
@@ -153,7 +153,7 @@ class dividemix_dataloader():
             return test_loader
         
         elif mode=='eval_train':
-            eval_dataset = cifar_dataset(dataset=self.dataset, r=self.r,
+            eval_dataset = TS_dataset(dataset=self.dataset, r=self.r,
                                         transform=self.transform_test, mode='all',train_dataset=self.train_dataset,
                                          test_dataset=self.test_dataset)
             eval_loader = DataLoader(

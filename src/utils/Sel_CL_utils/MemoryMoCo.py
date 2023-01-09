@@ -34,7 +34,7 @@ class MemoryMoCo(nn.Module):
             prob_pos_hard1 = torch.add(l_neg, -1, prob_pos_hard1.expand(N,Q))
             l_neg[prob_pos_hard1 < 0] = 0
             easy_ratio = l_neg[l_neg<=0].size(0)/N/Q
-            print(easy_ratio)
+            print(f'{easy_ratio}')
 
         out = torch.cat((l_pos, l_neg), dim=1)
         out = torch.div(out, self.temperature).contiguous()

@@ -1,16 +1,12 @@
-from __future__ import print_function
 
 import copy
 
-# from dataset.cifar_dataset import *
 
 import torch.utils.data as data
 import sys
 
 sys.path.append('../Sel-CL_utils')
-# from models.preact_resnet import *
 
-# from dataset.cifar_dataset import *
 
 from torch import optim
 import random
@@ -38,6 +34,8 @@ from src.models.model import CNNAE
 from src.utils.saver import Saver
 from src.utils.utils import readable, reset_seed_, reset_model, flip_label, map_abg, remove_empty_dirs, \
     evaluate_class
+from sklearn.metrics import accuracy_score, f1_score
+from scipy.special import softmax
 
 #####
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
@@ -52,8 +50,60 @@ def build_model(args, device):
     moment_update(model, model_ema, 0)
     return model, model_ema
 
+def train_step(data_loader, model):
+    model = model.eval()
 
-def main_wrapper_Sel_CL(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seeds=[0]):
+    yhat = []
+    ytrue = []
+
+    for x, y,_,_ in data_loader:
+        x = x.to(device)
+
+        logits,_ = model(x)
+
+        yhat.append(logits.detach().cpu().numpy())
+        try:
+            y = y.cpu().numpy()
+        except:
+            y = y.numpy()
+        ytrue.append(y)
+
+    yhat = np.concatenate(yhat,axis=0)
+    ytrue = np.concatenate(ytrue,axis=0)
+    y_hat_proba = softmax(yhat, axis=1)
+    y_hat_labels = np.argmax(y_hat_proba, axis=1)
+    accuracy = accuracy_score(ytrue, y_hat_labels)
+    f1_weighted = f1_score(ytrue, y_hat_labels, average='weighted')
+
+    return accuracy, f1_weighted
+
+def test_step(data_loader, model):
+    model = model.eval()
+
+    yhat = []
+    ytrue = []
+
+    for x, y in data_loader:
+        x = x.to(device)
+
+        logits,_ = model(x)
+
+        yhat.append(logits.detach().cpu().numpy())
+        try:
+            y = y.cpu().numpy()
+        except:
+            y = y.numpy()
+        ytrue.append(y)
+
+    yhat = np.concatenate(yhat,axis=0)
+    ytrue = np.concatenate(ytrue,axis=0)
+    y_hat_proba = softmax(yhat, axis=1)
+    y_hat_labels = np.argmax(y_hat_proba, axis=1)
+    accuracy = accuracy_score(ytrue, y_hat_labels)
+    f1_weighted = f1_score(ytrue, y_hat_labels, average='weighted')
+
+    return accuracy, f1_weighted
+def main_wrapper_Sel_CL(args, x_train, x_test, Y_train_clean, Y_test_clean, saver,seed=None):
     class SaverSlave(Saver):
         def __init__(self, path):
             super(Saver)
@@ -74,17 +124,9 @@ def main_wrapper_Sel_CL(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_c
                    seq_len=x_train.shape[1], kernel_size=args.kernel_size, stride=args.stride,
                    padding=args.padding, dropout=args.dropout, normalization=args.normalization).to(device)
 
-    classifier_ema = NonLinClassifier(args.embedding_size, classes, d_hidd=args.classifier_dim, dropout=args.dropout,
-                                  norm=args.normalization)
-
-    model_ema = CNNAE(input_size=x_train.shape[2], num_filters=args.filters, embedding_dim=args.embedding_size,
-                  seq_len=x_train.shape[1], kernel_size=args.kernel_size, stride=args.stride,
-                  padding=args.padding, dropout=args.dropout, normalization=args.normalization).to(device)
-
     ######################################################################################################
     # model is multi task - AE Branch and Classification branch
     model = MetaModel_Sel_CL(ae=model, classifier=classifier, name='CNN', low_dim=args.low_dim).to(device)
-    model_ema = MetaModel_Sel_CL(ae=model_ema, classifier=classifier_ema, name='CNN', low_dim=args.low_dim).to(device)
 
     nParams = sum([p.nelement() for p in model.parameters()])
     s = 'MODEL: %s: Number of parameters: %s' % ('CNN', readable(nParams))
@@ -94,119 +136,89 @@ def main_wrapper_Sel_CL(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_c
     ######################################################################################################
     print('Num Classes: ', classes)
     print('Train:', x_train.shape, Y_train_clean.shape, [(Y_train_clean == i).sum() for i in np.unique(Y_train_clean)])
-    print('Validation:', x_valid.shape, Y_valid_clean.shape,
-          [(Y_valid_clean == i).sum() for i in np.unique(Y_valid_clean)])
     print('Test:', x_test.shape, Y_test_clean.shape, [(Y_test_clean == i).sum() for i in np.unique(Y_test_clean)])
-    saver.append_str(['Train: {}'.format(x_train.shape), 'Validation:{}'.format(x_valid.shape),
+    saver.append_str(['Train: {}'.format(x_train.shape),
                       'Test: {}'.format(x_test.shape), '\r\n'])
 
     ######################################################################################################
     # Main loop
-    df_results = pd.DataFrame()
-    # seeds = np.random.choice(1000, args.n_runs, replace=False)
-    seeds = seeds
-    print("seeds = ", seeds)
+    if seed is None:
+        seed = np.random.choice(1000, 1, replace=False)
 
-    for run, seed in enumerate(seeds):
-        print()
-        print('#' * shutil.get_terminal_size().columns)
-        print('EXPERIMENT: {}/{} -- RANDOM SEED:{}'.format(run + 1, args.n_runs, seed).center(columns))
-        print('#' * shutil.get_terminal_size().columns)
-        print()
+    print()
+    print('#' * shutil.get_terminal_size().columns)
+    print('RANDOM SEED:{}'.format(seed).center(columns))
+    print('#' * shutil.get_terminal_size().columns)
+    print()
 
-        args.seed = seed
+    args.seed = seed
 
-        reset_seed_(seed)
-        model = reset_model(model)
-        model_ema = copy.deepcopy(model)
-        # torch.save(model.state_dict(), os.path.join(saver.path, 'initial_weight.pt'))
 
-        saver_loop = SaverSlave(os.path.join(saver.path, f'seed_{seed}'))
+    ni = args.ni
+    saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
+    # True or false
+    print('+' * shutil.get_terminal_size().columns)
+    print('Label noise ratio: %.3f' % ni)
+    print('+' * shutil.get_terminal_size().columns)
+    # saver.append_str(['#' * 100, 'Label noise ratio: %f' % ni])
 
-        i = 0
-        for ni in args.ni:
-            saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
-            i += 1
-            # True or false
-            print('+' * shutil.get_terminal_size().columns)
-            print('HyperRun: %d/%d' % (i, len(args.ni)))
-            print('Label noise ratio: %.3f' % ni)
-            print('+' * shutil.get_terminal_size().columns)
-            # saver.append_str(['#' * 100, 'Label noise ratio: %f' % ni])
+    reset_seed_(seed)
+    model = reset_model(model)
+    model_ema = copy.deepcopy(model)
 
-            reset_seed_(seed)
-            model = reset_model(model)
+    Y_train, mask_train = flip_label(x_train, Y_train_clean, ni, args)
+    Y_test = Y_test_clean
 
-            Y_train, mask_train = flip_label(x_train, Y_train_clean, ni, args)
-            Y_valid, mask_valid = flip_label(x_valid, Y_valid_clean, ni, args)
-            Y_test = Y_test_clean
+    ############################################################
 
-            ############################################################
+    exp_path = os.path.join(args.out,
+                            'noise_models_FCN_{0}_SI{1}_SD{2}'.format(args.experiment_name,
+                                                                      args.seed_initialization,
+                                                                      args.seed_dataset),
+                            args.noise_type, str(int(args.ni * 100)))
+    res_path = os.path.join(args.out, 'metrics_FCN_{0}_SI{1}_SD{2}'.format(args.experiment_name,
+                                                                           args.seed_initialization,
+                                                                           args.seed_dataset),
+                            args.noise_type, str(int(args.ni * 100)))
 
-            exp_path = os.path.join(args.out,
-                                    'noise_models_FCN_{0}_SI{1}_SD{2}'.format(args.experiment_name,
-                                                                              args.seed_initialization,
-                                                                              args.seed_dataset),
-                                    args.noise_type, str(int(args.ni[0]*100)))
-            res_path = os.path.join(args.out, 'metrics_FCN_{0}_SI{1}_SD{2}'.format(args.experiment_name,
-                                                                                   args.seed_initialization,
-                                                                                   args.seed_dataset),
-                                    args.noise_type, str(int(args.ni[0]*100)))
+    if not os.path.isdir(res_path):
+        os.makedirs(res_path)
 
-            if not os.path.isdir(res_path):
-                os.makedirs(res_path)
+    if not os.path.isdir(exp_path):
+        os.makedirs(exp_path)
 
-            if not os.path.isdir(exp_path):
-                os.makedirs(exp_path)
+    name = "/results"
 
-            __console__ = sys.stdout
-            name = "/results"
-            # log_file = open(res_path + name + ".log", 'a')
-            # sys.stdout = log_file
-            print(args)
+    print(args)
 
-            random.seed(args.seed_initialization)  # python seed for image transformation
+    random.seed(args.seed_initialization)  # python seed for image transformation
 
-            ############################################################
+    ############################################################
 
-            valid_results, test_results = train_eval_model(model, x_train, x_valid, x_test, Y_train,
-                                                                          Y_valid, Y_test, Y_train_clean,
-                                                                          Y_valid_clean,
-                                                                          ni, args, saver_slave,
-                                                                          mask_train=mask_train,
-                                                                          res_path=res_path,
-                                                                          exp_path=exp_path,
-                                                                          model_ema=model_ema)
-
-            keys = list(test_results.keys())
-            test_results['noise'] = ni
-            test_results['seed'] = seed
-            test_results['correct'] = 'Co-teaching'
-            test_results['losses'] = map_abg([0, 1, 0])
-            # saver_loop.append_str(['Test Results:'])
-            # saver_loop.append_dict(test_results)
-            # df_results = df_results.append(test_results, ignore_index=True)
-
+    test_results = train_eval_model(model, x_train, x_test, Y_train,
+                                    Y_test, Y_train_clean,
+                                    ni, args, saver_slave,
+                                    mask_train=mask_train,
+                                    res_path=res_path,
+                                    exp_path=exp_path,
+                                    model_ema=model_ema)
     remove_empty_dirs(saver.path)
     return test_results
 
-def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, Y_train_clean, Y_valid_clean,
+def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
                      ni, args, saver, plt_embedding=False, plt_cm=False,mask_train=None,exp_path=None,
                      res_path=None, model_ema = None, log_file=None):
 
     train_dataset = TensorDataset(torch.from_numpy(x_train).float(), torch.from_numpy(Y_train).long(),
                                   torch.from_numpy(np.arange(len(Y_train))),torch.from_numpy(Y_train_clean))
-    valid_dataset = TensorDataset(torch.from_numpy(x_valid).float(), torch.from_numpy(Y_valid).long())
     test_dataset = TensorDataset(torch.from_numpy(x_test).float(), torch.from_numpy(Y_test).long())
 
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
-                              num_workers=args.num_workers)
+
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
                              num_workers=args.num_workers)
-    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False,
+    train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=True,
                                    num_workers=args.num_workers)
 
-    ######################################################################################################
     uns_contrast = MemoryMoCo(args.low_dim, args.uns_queue_k, args.uns_t, thresh=0).cuda()
 
     optimizer = optim.SGD(model.parameters(), lr=args.lr, momentum=args.momentum, weight_decay=args.wd)
@@ -218,14 +230,16 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
     else:
         queue = []
 
-    # np.save(res_path + '/' + str(int(args.ni[0]*100)) + '_noisy_labels.npy', np.asarray(train_dataset.tensors[1]))
-    
-    accs=[]
-    f1s=[]
+    # np.save(res_path + '/' + str(int(args.ni*100)) + '_noisy_labels.npy', np.asarray(train_dataset.tensors[1]))
+    test_accs=[]
+    test_f1s=[]
+
+    ############################################  Sel-CL  ##########################################################
+    #
     for epoch in range(args.initial_epoch, args.epoch + 1):
 
         st = time.time()
-        print("=================>    ", args.experiment_name, args.ni[0])
+        # print("=================>    ", args.experiment_name, args.ni)
         if (epoch <= args.warmup):
             if (args.warmup_way == 'uns'):
                 train_uns(args, scheduler, model, model_ema, uns_contrast, queue, device, train_loader,
@@ -237,7 +251,8 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
                                                                     pin_memory=True,
                                                                     sampler=torch.utils.data.WeightedRandomSampler(
                                                                         torch.ones(len(train_dataset)),
-                                                                        len(train_dataset)))
+                                                                        len(train_dataset)),
+                                                                    drop_last=True)
                 trainNoisyLabels = torch.LongTensor(train_loader.dataset.targets).unsqueeze(1)
                 train_sup(args, scheduler, model, model_ema, uns_contrast, queue, device, train_loader,
                           train_selected_loader, optimizer, epoch,
@@ -247,38 +262,38 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
                                                                 num_workers=args.num_workers,
                                                                 pin_memory=True,
                                                                 sampler=torch.utils.data.WeightedRandomSampler(
-                                                                    selected_examples, len(selected_examples)))
+                                                                    selected_examples, len(selected_examples)),
+                                                                drop_last=True)
             train_sel(args, scheduler, model, model_ema, uns_contrast, queue, device, train_loader,
                       train_selected_loader, optimizer, epoch, selected_pairs)
 
         if (epoch >= args.warmup_epoch):
-            print('######## Pair-wise selection ########')
+            # print('######## Pair-wise selection ########')
             selected_examples, selected_pairs = pair_selection(args, model, device, train_loader, test_loader,
                                                                epoch)
 
-        print('Epoch time: {:.2f} seconds\n'.format(time.time() - st))
 
-        test_eval(args, model, device, test_loader)
+        # test_eval(args, model, device, test_loader)
 
-        acc, acc5 = kNN(args, epoch, model, None, train_loader, test_loader, args.k_val if args.k_val<200 else 200, 0.1, True)
-        print('\nEpoch {}, acc {} \n'.format(epoch, acc))
+        acc, _ = kNN(args, epoch, model, None, train_loader, test_loader, args.k_val if args.k_val<200 else 200, 0.1, True)
 
-        print('KNN top-1 precion: {:.4f}'.format(acc * 100.))
+        # print('KNN top-1 precion: {:.4f}'.format(acc * 100.))
+        train_acc, _ = train_step(train_loader, model)
+        test_acc, test_f1 = test_step(test_loader, model)
+        print('\nEpoch {}, KNN top-1 precion {} train acc {} test acc {}'.format(epoch, acc,train_acc,test_acc))
 
-        test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
-                                      'Test', True, plt_cm=plt_cm, plt_lables=False)
 
-        accs.append(test_results['acc'])
-        f1s.append(test_results['f1_weighted'])
+        test_accs.append(test_acc)
+        test_f1s.append(test_f1)
 
         # if (epoch % 10 == 0):
         #     save_model(model, optimizer, args, epoch, exp_path + "/Sel-CL_model.pth")
         #     np.save(res_path + '/' + 'selected_examples_train.npy', selected_examples.data.cpu().numpy())
 
         # log_file.flush()
-    ######################################################################################################
-    # Fine-tune model
-    # #
+    ####################################################################################################################
+    # Sel-CL+ : model with Fine-tune
+    #
     if args.fine_tune:
         # clean_idx = np.load(res_path + "/selected_examples_train.npy")
         clean_idx = selected_examples.data.cpu().numpy()
@@ -290,11 +305,6 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
         if not os.path.isdir(exp_path):
             os.makedirs(exp_path)
 
-        # __console__ = sys.stdout
-        # log_file = open(res_path + "results.log", 'a')
-        # sys.stdout = log_file
-        print(args)
-
         if args.ReInitializeClassif == 1:
             model.linear2 = nn.Linear(512, args.num_classes).to(device)
 
@@ -303,43 +313,35 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
         optimizer = optim.SGD(model.parameters(), lr=args.ft_lr, momentum=args.momentum, weight_decay=args.wd)
         scheduler = optim.lr_scheduler.MultiStepLR(optimizer, milestones=milestones, gamma=0.1)
 
+        if sum(clean_idx)>0:
+            new_train_dataset = TensorDataset(train_dataset.tensors[0][clean_idx==1], train_dataset.tensors[1][clean_idx==1],
+                                      torch.from_numpy(np.arange(len(Y_train[clean_idx==1]))),train_dataset.tensors[3][clean_idx==1])
 
-        new_train_dataset = TensorDataset(torch.from_numpy(x_train[clean_idx==1]).float(), torch.from_numpy(Y_train[clean_idx==1]).long(),
-                                  torch.from_numpy(np.arange(len(Y_train[clean_idx==1]))),torch.from_numpy(Y_train_clean[clean_idx==1]))
 
+            train_loader = DataLoader(new_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False,
+                                           num_workers=args.num_workers)
 
-        train_loader = DataLoader(new_train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False,
-                                       num_workers=args.num_workers)
+            for epoch in range(args.ft_initial_epoch, args.ft_epoch + 1):
+                st = time.time()
+                # print("=================>    ", args.experiment_name, args.ni)
+                scheduler.step()
+                train_acc,train_loss,model=train_model(train_loader,  model, optimizer, epoch, args)
+                test_acc, test_f1 = test_step(test_loader, model)
+                print('\nEpoch:{}, train_acc:{}, train_loss:{}, test_acc: {}'.format(epoch,train_acc,train_loss,test_acc))
 
-        for epoch in range(args.ft_initial_epoch, args.ft_epoch + 1):
-            st = time.time()
-            print("=================>    ", args.experiment_name, args.ni[0])
-            scheduler.step()
-            train_acc,train_loss,model=train_model(train_loader,  model, optimizer, epoch, args)
-            print('Epoch time: {:.2f} seconds\n'.format(time.time() - st))
-            print('\nEpoch:{}, train_acc:{}, train_loss:{}'.format(epoch,train_acc,train_loss))
+                test_accs.append(test_acc)
+                test_f1s.append(test_f1)
 
-            test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
-                                          'Test', True, plt_cm=plt_cm, plt_lables=False)
-            accs.append(test_results['acc'])
-            f1s.append(test_results['f1_weighted'])
+    ########################################## Eval ############################################
 
-    ######################################################################################################
-
-    valid_results = evaluate_class(model, x_valid, Y_valid, Y_valid_clean, valid_loader, ni, saver,
-                                   'CNN', 'Valid', True, plt_cm=plt_cm, plt_lables=False)
+    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
     test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
                                   'Test', True, plt_cm=plt_cm, plt_lables=False)
-
-    test_results['max_valid_acc'] = np.max(accs)
-    test_results['max_valid_acc_epoch'] = np.argmax(accs)
-    test_results['avg_last_ten_valid_acc'] = np.mean(accs[-10:])
-    test_results['max_valid_f1'] = np.max(f1s)
-    test_results['max_valid_f1_epoch'] = np.argmax(f1s)
-    test_results['avg_last_ten_valid_f1'] = np.mean(f1s[-10:])
+    test_results['avg_last_ten_test_acc'] = np.mean(test_accs[-10:])
+    test_results['avg_last_ten_test_f1'] = np.mean(test_f1s[-10:])
 
     torch.cuda.empty_cache()
-    return valid_results, test_results
+    return test_results
 
 def train_model(data_loader, model, optimizer,epoch=None,
                 args=None):
@@ -373,7 +375,11 @@ def train_model(data_loader, model, optimizer,epoch=None,
         avg_accuracy += acc.mean().cpu().numpy()
         global_step += 1
 
-
     avg_loss=avg_loss1
 
-    return avg_accuracy / global_step, avg_loss / global_step, model
+    try:
+        return avg_accuracy / global_step, avg_loss / global_step, model
+    except:
+        print('\nglobal_step: ',global_step)
+        print('dataset: ',data_loader.dataset)
+

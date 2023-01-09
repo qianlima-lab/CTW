@@ -1,5 +1,4 @@
 import torch.backends.cudnn as cudnn
-# from dataset.cifar_dataset import *
 from torchvision import datasets
 import sys
 import os
@@ -8,6 +7,7 @@ sys.path.append(os.path.dirname(sys.path[0]))
 sys.path.append('../Sel-CL_utils')
 from src.utils.Sel_CL_utils.utils_noise import *
 # from src.models.preact_resnet import *
+
 
 import argparse
 import logging
@@ -32,11 +32,11 @@ print(os.getcwd())
 
 from src.utils.utils import create_synthetic_dataset
 from src.utils.global_var import OUTPATH
-from src.utils.log_utils import StreamToLogger
 from src.utils.saver import Saver
 from src.utils.training_helper_Sel_CL import main_wrapper_Sel_CL
 from src.ucr_data.load_ucr_pre import load_ucr
 from src.uea_data.load_uea_pre import load_uea
+from src.utils.log_utils import StreamToLogger,get_logger,create_logfile
 
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
@@ -65,7 +65,7 @@ def parse_args(command=None):
     parser.add_argument('--num_classes', type=int, default=10, help='Number of in-distribution classes')
     parser.add_argument('--wd', type=float, default=1e-4, help='weight decay')
     parser.add_argument('--momentum', default=0.9, type=float, help='momentum')
-    parser.add_argument('--dataset', type=str, default='CIFAR-10', help='CIFAR-10, CIFAR-100')
+    parser.add_argument('--dataset', type=str, default='CBF', help='')
     parser.add_argument('--noise_type', default='asymmetric', help='symmetric or asymmetric')
     parser.add_argument('--train_root', default='./dataset', help='root for train data')
     parser.add_argument('--out', type=str, default='./results/Sel_CL_out', help='Directory of the output')
@@ -73,7 +73,7 @@ def parse_args(command=None):
                         help='name of the experiment (for the output files)')
     parser.add_argument('--download', type=bool, default=False, help='download dataset')
 
-    parser.add_argument('--network', type=str, default='PR18', help='Network architecture')
+    parser.add_argument('--network', type=str, default='FCN', help='Network architecture')
     parser.add_argument('--headType', type=str, default="Linear", help='Linear, NonLinear')
     parser.add_argument('--low_dim', type=int, default=128, help='Size of contrastive learning embedding')
     parser.add_argument('--seed_initialization', type=int, default=1, help='random seed (default: 1)')
@@ -124,7 +124,6 @@ def parse_args(command=None):
     parser.add_argument('--l2penalty', type=float, default=1e-4)
 
     parser.add_argument('--seed', type=int, default=0, help='RNG seed - only affects Network init')
-    parser.add_argument('--n_runs', type=int, default=1, help='Number of runs')
 
     parser.add_argument('--classifier_dim', type=int, default=128)
     parser.add_argument('--embedding_size', type=int, default=512)
@@ -133,7 +132,7 @@ def parse_args(command=None):
     parser.add_argument('--filters', nargs='+', type=int, default=[128, 128, 256, 256])
     parser.add_argument('--stride', type=int, default=2)
     parser.add_argument('--padding', type=int, default=2)
-    parser.add_argument('--ni', type=float, nargs='+', default=[0.5], help='label noise ratio')
+    parser.add_argument('--ni', type=float, default=0.5, help='label noise ratio')
     parser.add_argument('--startLabelCorrection', type=int, default=30, help='Epoch to start label correction')
     parser.add_argument('--ReInitializeClassif', type=int, default=0, help='Enable predictive label correction')
     parser.add_argument('--ft_initial_epoch', type=int, default=1, help='fine tune args')
@@ -141,6 +140,7 @@ def parse_args(command=None):
     parser.add_argument('--fine_tune', action='store_true', default=False, help='if fine tune')
     parser.add_argument('--ft_lr', type=float, default=0.0001, help='fine tune args')
     parser.add_argument('--outfile', type=str, default='Sel_CL.csv', help='filename')
+    parser.add_argument('--debug', action='store_true', default=False,help='')
 
     args = parser.parse_args()
 
@@ -151,35 +151,10 @@ def parse_args(command=None):
 
 
 def main(args, dataset_name=None):
-    # LOG STUFF
+
     # Declare saver object
     saver = Saver(OUTPATH, os.path.basename(__file__).split(sep='.py')[0],
                   hierarchy=os.path.join(args.dataset),args=args)
-
-    print('run logfile at: ', os.path.join(saver.path, 'logfile.log'))
-    # Logging setting
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(name)s: %(message)s',
-        datefmt='%m/%d/%Y %H_%M_%S',
-        filename=os.path.join(saver.path, 'logfile.log'),
-        filemode='a'
-    )
-
-    # Redirect stdout
-    stdout_logger = logging.getLogger('STDOUT')
-    slout = StreamToLogger(stdout_logger, logging.INFO)
-    sys.stdout = slout
-
-    # Redirect stderr
-    stderr_logger = logging.getLogger('STDERR')
-    slerr = StreamToLogger(stderr_logger, logging.ERROR)
-    sys.stderr = slerr
-
-    # Suppress output
-    if args.disable_print:
-        slout.terminal = open(os.devnull, 'w')
-        slerr.terminal = open(os.devnull, 'w')
 
     ######################################################################################################
     print(args)
@@ -212,11 +187,7 @@ def main(args, dataset_name=None):
 
     five_test_acc = []
     five_test_f1 = []
-    five_max_test_acc = []
-    five_max_test_acc_epcoh = []
     five_avg_last_ten_test_acc = []
-    five_max_test_f1 = []
-    five_max_test_f1_epcoh = []
     five_avg_last_ten_test_f1 = []
 
     result_evalution = dict()
@@ -243,15 +214,13 @@ def main(args, dataset_name=None):
         id_acc = id_acc + 1
         print("id_acc = ", id_acc, trn_index.shape, test_index.shape)
         x_train = X[trn_index]
-        args.k_val = int(len(x_train)/3) if int(len(x_train)/3)<250 else 250
         x_test = X[test_index]
         Y_train_clean = Y[trn_index]
         Y_test_clean = Y[test_index]
+        args.k_val = min(np.median(np.bincount(Y_train_clean)).astype(int),args.k_val)
+
         args.uns_queue_k = int(X.shape[0]/5)
         args.queue_per_class = int(args.uns_queue_k/args.num_classes)
-
-        Y_valid_clean = Y_test_clean.copy()
-        x_valid = x_test.copy()
 
         batch_size = min(x_train.shape[0] // 10, args.batch_size)
         if x_train.shape[0] % batch_size == 1:
@@ -276,17 +245,13 @@ def main(args, dataset_name=None):
         saver.make_log(**vars(args))
         ######################################################################################################
 
-        df_results = main_wrapper_Sel_CL(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean,
+        df_results = main_wrapper_Sel_CL(args, x_train, x_test, Y_train_clean, Y_test_clean,
                                          saver,seeds=[seeds[seeds_i]])
 
         five_test_acc.append(df_results["acc"])
         five_test_f1.append(df_results["f1_weighted"])
-        five_max_test_acc.append(df_results["max_valid_acc"])
-        five_max_test_acc_epcoh.append(df_results["max_valid_acc_epoch"])
-        five_avg_last_ten_test_acc.append(df_results["avg_last_ten_valid_acc"])
-        five_max_test_f1.append(df_results["max_valid_f1"])
-        five_max_test_f1_epcoh.append(df_results["max_valid_f1_epoch"])
-        five_avg_last_ten_test_f1.append(df_results["avg_last_ten_valid_f1"])
+        five_avg_last_ten_test_acc.append(df_results["avg_last_ten_test_acc"])
+        five_avg_last_ten_test_f1.append(df_results["avg_last_ten_test_f1"])
 
     # print('Save results')
     # df_results.to_csv(os.path.join(saver.path, 'results.csv'), sep=',', index=False)
@@ -296,10 +261,6 @@ def main(args, dataset_name=None):
     result_evalution["std_five_test_acc"] = round(np.std(five_test_acc), 4)
     result_evalution["avg_five_test_f1"] = round(np.mean(five_test_f1), 4)
     result_evalution["std_five_test_f1"] = round(np.std(five_test_f1), 4)
-    result_evalution["avg_five_max_test_acc"] = round(np.mean(five_max_test_acc), 4)
-    result_evalution["avg_five_max_test_f1"] = round(np.mean(five_max_test_f1), 4)
-    result_evalution["avg_five_max_test_acc_epoch"] = round(np.mean(five_max_test_acc_epcoh), 4)
-    result_evalution["avg_five_max_test_f1_epoch"] = round(np.mean(five_max_test_f1_epcoh), 4)
     result_evalution["avg_five_avg_last_ten_test_acc"] = round(np.mean(five_avg_last_ten_test_acc), 4)
     result_evalution["avg_five_avg_last_ten_test_f1"] = round(np.mean(five_avg_last_ten_test_f1), 4)
 
@@ -317,6 +278,15 @@ if __name__ == '__main__':
     current_path = os.path.abspath(__file__)
     father_path = os.path.abspath(os.path.dirname(current_path) + os.path.sep + ".")
     basicpath = os.path.dirname(father_path)
+
+    # Logging setting
+    if not args.debug:  # if not debug, no log.
+        logger = get_logger(logging.INFO, args.debug, args=args, filename='logfile.log')
+        __stderr__ = sys.stderr  #
+        sys.stderr = open(create_logfile(args, 'error.log'), 'a')
+        __stdout__ = sys.stdout
+        sys.stdout = StreamToLogger(logger, logging.INFO)
+
     print("father_path = ", father_path)
     result_value = []
 
@@ -325,6 +295,7 @@ if __name__ == '__main__':
     else:
         ucr=['ArrowHead','CBF','FaceFour','MelbournePedestrian','OSULeaf','Plane','Symbols','Trace',
              'Epilepsy','NATOPS','EthanolConcentration', 'FaceDetection', 'FingerMovements']
+        # ucr=['EthanolConcentration', 'FaceDetection', 'FingerMovements']
 
     for dataset_name in ucr:
         args = parse_args()  # restart

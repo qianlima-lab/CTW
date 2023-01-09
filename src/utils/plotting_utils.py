@@ -23,15 +23,10 @@ class MplColorHelper:
         return self.scalarMap.to_rgba(val)
 
 
-def plot_loss(train, valid, loss_type, network, kind='loss', saver=None, early_stop=True, extra_title=''):
+def plot_loss(train, loss_type, network, kind='loss', saver=None, extra_title=''):
     """loss_kind : str : Loss, Accuracy"""
     fig = plt.figure()
     plt.plot(train, label=f'Training {kind}')
-    plt.plot(valid, label=f'Validation {kind}')
-
-    if early_stop:
-        minposs = valid.index(min(valid))
-        plt.axvline(minposs, linestyle='--', color='r', label='Early Stopping Checkpoint')
 
     plt.title(f'Model:{network} - Loss:{loss_type} - {extra_title}')
     plt.grid(True)
@@ -258,12 +253,11 @@ def plot_cm(cm, T=None, network='Net', title_str='', saver=None):
         saver.save_fig(fig, f'CM_{title_str}')
 
 
-def plot_embedding(model, train_loader, valid_loader, cluster_centers, Y_train_clean, Y_valid_clean, Y_train, Y_valid,
+def plot_embedding(model, train_loader, cluster_centers, Y_train_clean, Y_train,
                    saver, network='Model', correct=False):
     print('Plot Embedding...')
     # Embeddings
     train_embedding = utils.predict(model, train_loader).squeeze()
-    valid_embedding = utils.predict(model, valid_loader).squeeze()
     centroids_embedding = cluster_centers
     classes = len(np.unique(Y_train_clean))
 
@@ -274,11 +268,9 @@ def plot_embedding(model, train_loader, valid_loader, cluster_centers, Y_train_c
         trs = UMAP(n_components=n_comp, n_neighbors=50, min_dist=0.01, metric='euclidean')
         ttl = 'UMAP'
         train_embedding2d = trs.fit_transform(train_embedding)
-        valid_embedding2d = trs.transform(valid_embedding)
         centroids = trs.transform(centroids_embedding)
     else:
         train_embedding2d = train_embedding
-        valid_embedding2d = valid_embedding
         centroids = centroids_embedding
 
     cmap = 'jet'
@@ -292,14 +284,12 @@ def plot_embedding(model, train_loader, valid_loader, cluster_centers, Y_train_c
     l0 = ax.scatter(*train_embedding2d.T, s=50, alpha=0.5, marker='.', label='Train',
                     c=COL.get_rgb(Y_train_clean),
                     edgecolors=COL.get_rgb(Y_train))
-    l1 = ax.scatter(*valid_embedding2d.T, s=50, alpha=0.5, marker='^', label='Valid',
-                    c=COL.get_rgb(Y_valid_clean),
-                    edgecolors=COL.get_rgb(Y_valid))
+
     l2 = ax.scatter(*centroids.T, s=250, marker='P', label='Learnt Centroids',
                     c=COL.get_rgb([i for i in range(classes)]), edgecolors='black')
-    lines = [l0, l1, l2] + [Line2D([0], [0], marker='o', linestyle='', color=c, markersize=10) for c in
+    lines = [l0, l2] + [Line2D([0], [0], marker='o', linestyle='', color=c, markersize=10) for c in
                             [COL.get_rgb(i) for i in np.unique(Y_train_clean.astype(int))]]
-    labels = [l0.get_label(), l1.get_label(), l2.get_label()] + [i for i in range(len(lines))]
+    labels = [l0.get_label(), l2.get_label()] + [i for i in range(len(lines))]
     ax.legend(lines, labels)
     ax.set_title(ttl)
     plt.tight_layout()

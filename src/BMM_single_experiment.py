@@ -13,16 +13,15 @@ from sklearn.model_selection import StratifiedKFold
 from pyts import datasets
 import time
 
-
 sys.path.append(os.path.dirname(sys.path[0]))
 from src.utils.utils import create_synthetic_dataset
 from src.utils.global_var import OUTPATH
-from src.utils.log_utils import StreamToLogger
 from src.utils.plotting_utils import plot_label_insight
 from src.utils.saver import Saver
 from src.utils.training_helper_BMM import main_wrapper
 from src.ucr_data.load_ucr_pre import load_ucr
 from src.uea_data.load_uea_pre import load_uea
+from src.utils.log_utils import StreamToLogger,get_logger,create_logfile
 
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
@@ -42,11 +41,9 @@ def parse_args():
     # Synth Data
     parser.add_argument('--dataset', type=str, default='Plane', help='UCR datasets')
 
-    parser.add_argument('--ni', type=float, nargs='+', default=[50], help='label noise ratio')
+    parser.add_argument('--ni', type=float, default=0.5, help='label noise ratio')
     parser.add_argument('--label_noise', type=int, default=0, help='Label noise type, sym or int for asymmetric, '
                                                                    'number as str for time-dependent noise')
-
-    parser.add_argument('--n_out', type=int, default=1, help='Output Heads')
 
     parser.add_argument('--M', type=int, nargs='+', default=[60, 120, 180, 240])
     parser.add_argument('--reg_term', type=float, default=1,
@@ -54,7 +51,7 @@ def parse_args():
     parser.add_argument('--alpha', type=float, default=32,
                         help='alpha parameter for the mixup distribution, default: 32')
 
-    parser.add_argument('--correct', type=str, nargs='+', default=['MixUp-BMM'], help='Correct labels')  ## ['None', 'Mixup', 'MixUp-BMM']
+    parser.add_argument('--correct', type=str, default='MixUp-BMM', help='Correct labels',choices=['None', 'Mixup', 'MixUp-BMM'])  ##
 
     parser.add_argument('--Mixup', type=str, default='Dynamic', choices=['None', 'Static', 'Dynamic'],
                         help="Type of bootstrapping. Available: 'None' (deactivated)(default), \
@@ -76,7 +73,6 @@ def parse_args():
 
     parser.add_argument('--num_workers', type=int, default=0, help='PyTorch dataloader worker. Set to 0 if debug.')
     parser.add_argument('--seed', type=int, default=0, help='RNG seed - only affects Network init')
-    parser.add_argument('--n_runs', type=int, default=1, help='Number of runs')
 
     parser.add_argument('--classifier_dim', type=int, default=128)
     parser.add_argument('--embedding_size', type=int, default=32)
@@ -94,7 +90,7 @@ def parse_args():
     parser.add_argument('--plt_cm', action='store_true', default=False)
     parser.add_argument('--headless', action='store_true', default=False, help='Matplotlib backend')
     parser.add_argument('--manual_seeds', type=int, nargs='+', default=[37, 118, 337, 815, 19],
-                        help='manual_seeds for five folds cross varidation')
+                        help='manual_seeds for five folds')
     parser.add_argument('--from_ucr', type=int, default=0, help='begin from which dataset')
     parser.add_argument('--end_ucr', type=int, default=128, help='end at which dataset')
     parser.add_argument('--ucr', type=int, default=0, help='if 128, run all ucr datasets')
@@ -103,6 +99,7 @@ def parse_args():
     parser.add_argument('--cuda_device', type=int, default=0, help='choose the cuda devcie')
     parser.add_argument('--basicpath', type=str, default='', help='basic path')
     parser.add_argument('--outfile', type=str, default='Mixup_BMM.csv', help='filename')
+    parser.add_argument('--debug', action='store_true', default=False,help='')
 
     args = parser.parse_args()
     torch.cuda.set_device(args.cuda_device)
@@ -111,48 +108,16 @@ def parse_args():
 
 ######################################################################################################
 def main(args, dataset_name=None):
-    # LOG STUFF
+
     # Declare saver object
     saver = Saver(OUTPATH, os.path.basename(__file__).split(sep='.py')[0],
                   hierarchy=os.path.join(args.dataset),args=args)
-
-    print('run logfile at: ', os.path.join(saver.path, 'logfile.log'))
-    # Logging setting
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(name)s: %(message)s',
-        datefmt='%m/%d/%Y %H:%M:%S',
-        filename=os.path.join(saver.path, 'logfile.log'),
-        filemode='a'
-    )
-
-    # Redirect stdout
-    stdout_logger = logging.getLogger('STDOUT')
-    slout = StreamToLogger(stdout_logger, logging.INFO)
-    sys.stdout = slout
-
-    # Redirect stderr
-    stderr_logger = logging.getLogger('STDERR')
-    slerr = StreamToLogger(stderr_logger, logging.ERROR)
-    sys.stderr = slerr
-
-    # Suppress output
-    if args.disable_print:
-        slout.terminal = open(os.devnull, 'w')
-        slerr.terminal = open(os.devnull, 'w')
 
     ######################################################################################################
     print(args)
     print()
 
     ######################################################################################################
-    SEED = args.seed
-    # TODO: implement multi device and different GPU selection
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(SEED)
-    if device == 'cuda':
-        torch.cuda.manual_seed(SEED)
-    np.random.seed(SEED)
 
     if args.headless:
         print('Setting Headless support')
@@ -172,11 +137,7 @@ def main(args, dataset_name=None):
 
     five_test_acc = []
     five_test_f1 = []
-    five_max_test_acc = []
-    five_max_test_acc_epcoh = []
     five_avg_last_ten_test_acc = []
-    five_max_test_f1 = []
-    five_max_test_f1_epcoh = []
     five_avg_last_ten_test_f1 = []
 
     result_evalution = dict()
@@ -225,19 +186,16 @@ def main(args, dataset_name=None):
             args.warmup=min(int(700/batches_per_epoch),25)
         ###########################
         saver.make_log(**vars(args))
-        plot_label_insight(x_train, Y_train_clean, saver=saver)
+        # plot_label_insight(x_train, Y_train_clean, saver=saver)
 
         ######################################################################################################
-        df_results = main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seeds=[seeds[seeds_i]])
+        df_results = main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean,
+                                  saver,seed=seeds[seeds_i])
 
         five_test_acc.append(df_results["acc"])
         five_test_f1.append(df_results["f1_weighted"])
-        five_max_test_acc.append(df_results["max_valid_acc"])
-        five_max_test_acc_epcoh.append(df_results["max_valid_acc_epoch"])
-        five_avg_last_ten_test_acc.append(df_results["avg_last_ten_valid_acc"])
-        five_max_test_f1.append(df_results["max_valid_f1"])
-        five_max_test_f1_epcoh.append(df_results["max_valid_f1_epoch"])
-        five_avg_last_ten_test_f1.append(df_results["avg_last_ten_valid_f1"])
+        five_avg_last_ten_test_acc.append(df_results["avg_last_ten_test_acc"])
+        five_avg_last_ten_test_f1.append(df_results["avg_last_ten_test_f1"])
 
     # print('Save results')
     # df_results.to_csv(os.path.join(saver.path, 'results.csv'), sep=',', index=False)
@@ -252,10 +210,6 @@ def main(args, dataset_name=None):
     result_evalution["std_five_test_acc"] = round(np.std(five_test_acc), 4)
     result_evalution["avg_five_test_f1"] = round(np.mean(five_test_f1), 4)
     result_evalution["std_five_test_f1"] = round(np.std(five_test_f1), 4)
-    result_evalution["avg_five_max_test_acc"] = round(np.mean(five_max_test_acc), 4)
-    result_evalution["avg_five_max_test_f1"] = round(np.mean(five_max_test_f1), 4)
-    result_evalution["avg_five_max_test_acc_epoch"] = round(np.mean(five_max_test_acc_epcoh), 4)
-    result_evalution["avg_five_max_test_f1_epoch"] = round(np.mean(five_max_test_f1_epcoh), 4)
     result_evalution["avg_five_avg_last_ten_test_acc"] = round(np.mean(five_avg_last_ten_test_acc), 4)
     result_evalution["avg_five_avg_last_ten_test_f1"] = round(np.mean(five_avg_last_ten_test_f1), 4)
 
@@ -269,6 +223,15 @@ if __name__ == '__main__':
     current_path = os.path.abspath(__file__)
     father_path = os.path.abspath(os.path.dirname(current_path) + os.path.sep + ".")
     basicpath = os.path.dirname(father_path)
+
+    # Logging setting
+    if not args.debug:  # if not debug, no log.
+        logger = get_logger(logging.INFO, args.debug, args=args, filename='logfile.log')
+        __stderr__ = sys.stderr  #
+        sys.stderr = open(create_logfile(args, 'error.log'), 'a')
+        __stdout__ = sys.stdout
+        sys.stdout = StreamToLogger(logger, logging.INFO)
+
     print("father_path = ", father_path)
     result_value = []
 
@@ -278,6 +241,7 @@ if __name__ == '__main__':
     else:
         ucr = ['ArrowHead', 'CBF', 'FaceFour', 'MelbournePedestrian', 'OSULeaf', 'Plane', 'Symbols', 'Trace',
                'Epilepsy', 'NATOPS', 'EthanolConcentration', 'FaceDetection', 'FingerMovements']
+        # ucr = ['FaceDetection', 'FingerMovements']
 
     for dataset_name in ucr:
         args = parse_args()

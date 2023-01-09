@@ -1,20 +1,32 @@
 import logging
 import os
 import sys
+import re
+from logging.handlers import RotatingFileHandler
 
+def create_logfile(args,filename):
+    project_path = re.compile(r'.*CTW_code').findall(os.getcwd())[0]
+    logdir_ = args.outfile.split('.')[0]
+    logdir = os.path.join(project_path,'logfiles',logdir_)
+    if not os.path.exists(logdir):
+        os.makedirs(logdir)
+    logfilename = os.path.join(logdir,filename)
+    return logfilename
 
-def get_logger(logger_name, level=logging.INFO, create_file=True, filepath=None):
+def get_logger(level=logging.INFO, debug=False,args=None,filename='logfile.log'):
     # create logger
-    log = logging.getLogger(logger_name)
+    log = logging.getLogger()
     log.setLevel(level=level)
 
     # create formatter and add it to the handlers
-    formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s',
-                                  datefmt='%m/%d/%Y %I:%M:%S %p')
+    formatter = logging.Formatter('%(asctime)s - %(message)s',
+                                  datefmt='%Y-%m-%d %H:%M:%S')
 
-    if create_file:
+    if not debug:
         # create file handler for logger.
-        fh = logging.FileHandler(os.path.join(filepath, 'logger.log'))
+        fh = RotatingFileHandler(create_logfile(args,filename),
+                                 maxBytes=10485760, backupCount=10,
+                                 encoding='utf-8')
         fh.setLevel(level=level)
         fh.setFormatter(formatter)
     # create console handler for logger.
@@ -23,10 +35,10 @@ def get_logger(logger_name, level=logging.INFO, create_file=True, filepath=None)
     ch.setFormatter(formatter)
 
     # add handlers to logger.
-    if create_file:
+    if not debug:
         log.addHandler(fh)
 
-    log.addHandler(ch)
+    # log.addHandler(ch)
     return log
 
 

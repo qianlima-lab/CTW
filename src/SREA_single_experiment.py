@@ -17,13 +17,13 @@ import torch
 from sklearn.model_selection import StratifiedKFold
 from pyts import datasets
 
-from src.utils.SREA_utils import main_wrapper
+from src.utils.training_helper_SREA import main_wrapper
 from src.utils.global_var import OUTPATH
-from src.utils.log_utils import StreamToLogger
 from src.utils.plotting_utils import plot_label_insight
 from src.utils.saver import Saver
 from src.ucr_data.load_ucr_pre import load_ucr
 from src.uea_data.load_uea_pre import load_uea
+from src.utils.log_utils import StreamToLogger,get_logger,create_logfile
 
 warnings.filterwarnings("ignore")
 torch.backends.cudnn.benchmark = True
@@ -35,12 +35,11 @@ columns = shutil.get_terminal_size().columns
 def parse_args():
     # Add global parameters
     parser = argparse.ArgumentParser(
-        description='SREA Single Experiment. It run n_runs independent experiments with different random seeds.'
-                    ' Each run evaluate different noise ratios (ni).')
+        description='SREA')
 
     parser.add_argument('--dataset', type=str, default='CBF', help='UCR datasets')
 
-    parser.add_argument('--ni', type=float, nargs='+', default=[0.30], help='label noise ratio')
+    parser.add_argument('--ni', type=float, default=0.30, help='label noise ratio')
     parser.add_argument('--label_noise',type=int, default=0, help='Label noise type, sym or int for asymmetric, '
                                                          'number as str for time-dependent noise')
 
@@ -51,7 +50,7 @@ def parse_args():
     parser.add_argument('--class_reg', type=int, default=1, help='Distribution regularization coeff')
     parser.add_argument('--entropy_reg', type=int, default=0., help='Entropy regularization coeff')
 
-    parser.add_argument('--correct', nargs='+', default=[True],
+    parser.add_argument('--correct', action='store_true', default=True,
                         help='Correct labels. Set to false to not correct labels.')
     parser.add_argument('--track', type=int, default=5, help='Number or past predictions snapshots')
     parser.add_argument('--init_centers', type=int, default=1, help='Initialize cluster centers. Warm up phase.')
@@ -73,7 +72,6 @@ def parse_args():
 
     parser.add_argument('--num_workers', type=int, default=0, help='PyTorch dataloader worker. Set to 0 if debug.')
     parser.add_argument('--seed', type=int, default=0, help='Initial RNG seed. Only for reproducibility')
-    parser.add_argument('--n_runs', type=int, default=1, help='Number of runs, each run has different rng seed.')
 
     parser.add_argument('--classifier_dim', type=int, default=128, help='Dimension of final classifier')
     parser.add_argument('--embedding_size', type=int, default=32, help='Dimension of embedding')
@@ -107,6 +105,7 @@ def parse_args():
     parser.add_argument('--end_ucr', type=int, default=128, help='end at which dataset')
     parser.add_argument('--basicpath', type=str, default='', help='basic path')
     parser.add_argument('--outfile', type=str, default='SREA.csv', help='filename')
+    parser.add_argument('--debug', action='store_true', default=False,help='')
 
     args = parser.parse_args()
     torch.cuda.set_device(args.cuda_device)
@@ -120,12 +119,6 @@ def main(args,dataset_name=None):
     print()
 
     ######################################################################################################
-    SEED = args.seed
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    torch.manual_seed(SEED)
-    if device == 'cuda':
-        torch.cuda.manual_seed(SEED)
-    np.random.seed(SEED)
 
     if args.headless:
         print('Setting Headless support')
@@ -142,30 +135,6 @@ def main(args,dataset_name=None):
     saver = Saver(OUTPATH, os.path.basename(__file__).split(sep='.py')[0],
                   hierarchy=os.path.join(args.dataset),args=args)
 
-    # Logging setting
-    logging.basicConfig(
-        level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(name)s: %(message)s',
-        datefmt='%m/%d/%Y %H_%M_%S',
-        filename=os.path.join(saver.path, 'logfile.log'),
-        filemode='a'
-    )
-
-    # Redirect stdout
-    stdout_logger = logging.getLogger('STDOUT')
-    slout = StreamToLogger(stdout_logger, logging.INFO)
-    sys.stdout = slout
-
-    # Redirect stderr
-    stderr_logger = logging.getLogger('STDERR')
-    slerr = StreamToLogger(stderr_logger, logging.ERROR)
-    sys.stderr = slerr
-
-    # Suppress terminal output
-    if args.disable_print:
-        slout.terminal = open(os.devnull, 'w')
-        slerr.terminal = open(os.devnull, 'w')
-
     ######################################################################################################
     # Data
     print('*' * shutil.get_terminal_size().columns)
@@ -175,11 +144,7 @@ def main(args,dataset_name=None):
 
     five_test_acc = []
     five_test_f1 = []
-    five_max_test_acc = []
-    five_max_test_acc_epcoh = []
     five_avg_last_ten_test_acc = []
-    five_max_test_f1 = []
-    five_max_test_f1_epcoh = []
     five_avg_last_ten_test_f1 = []
 
     result_evalution = dict()
@@ -204,12 +169,6 @@ def main(args,dataset_name=None):
         Y_train_clean = Y[trn_index]
         Y_test_clean = Y[test_index]
 
-
-    # x_train, x_test, Y_train_clean, Y_test_clean = train_test_split(X, Y, stratify=Y, test_size=0.2)
-
-        Y_valid_clean = Y_test_clean.copy()
-        x_valid = x_test.copy()
-
         batch_size = min(x_train.shape[0] // 10, args.batch_size)
         if x_train.shape[0] % batch_size == 1:
             batch_size += -1
@@ -231,7 +190,7 @@ def main(args,dataset_name=None):
         plot_label_insight(x_train, Y_train_clean, saver=saver)
 
         ######################################################################################################
-        df_results = main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seeds=[seeds[seeds_i]],dataset_name=dataset_name)
+        df_results = main_wrapper(args, x_train, x_test, Y_train_clean, Y_test_clean, saver,seed=seeds[seeds_i],dataset_name=dataset_name)
 
         print("df_results = ", df_results)
         print("df_results = ", df_results["acc"])
@@ -239,9 +198,8 @@ def main(args,dataset_name=None):
 
         five_test_acc.append(df_results["acc"])
         five_test_f1.append(df_results["f1_weighted"])
-        five_max_test_acc.append(df_results["max_valid_acc"] / 100)
-        five_max_test_acc_epcoh.append(df_results["max_valid_acc_epoch"])
-        five_avg_last_ten_test_acc.append(df_results["avg_last_ten_valid_acc"] / 100)
+        five_avg_last_ten_test_acc.append(df_results["avg_last_ten_test_acc"] / 100)
+        five_avg_last_ten_test_f1.append(df_results["avg_last_ten_test_f1"])
 
     endtime = time.time()
     result_evalution["dataset_name = "] = args.dataset
@@ -249,10 +207,6 @@ def main(args,dataset_name=None):
     result_evalution["std_five_test_acc"] = round(np.std(five_test_acc), 4)
     result_evalution["avg_five_test_f1"] = round(np.mean(five_test_f1), 4)
     result_evalution["std_five_test_f1"] = round(np.std(five_test_f1), 4)
-    result_evalution["avg_five_max_test_acc"] = round(np.mean(five_max_test_acc), 4)
-    result_evalution["avg_five_max_test_f1"] = round(np.mean(five_max_test_f1), 4)
-    result_evalution["avg_five_max_test_acc_epoch"] = round(np.mean(five_max_test_acc_epcoh), 4)
-    result_evalution["avg_five_max_test_f1_epoch"] = round(np.mean(five_max_test_f1_epcoh), 4)
     result_evalution["avg_five_avg_last_ten_test_acc"] = round(np.mean(five_avg_last_ten_test_acc), 4)
     result_evalution["avg_five_avg_last_ten_test_f1"] = round(np.mean(five_avg_last_ten_test_f1), 4)
 
@@ -270,6 +224,15 @@ if __name__ == '__main__':
 
     current_path = os.path.abspath(__file__)
     father_path = os.path.abspath(os.path.dirname(current_path) + os.path.sep + ".")
+
+    # Logging setting
+    if not args.debug:  # if not debug, no log.
+        logger = get_logger(logging.INFO, args.debug, args=args, filename='logfile.log')
+        __stderr__ = sys.stderr  #
+        sys.stderr = open(create_logfile(args, 'error.log'), 'a')
+        __stdout__ = sys.stdout
+        sys.stdout = StreamToLogger(logger, logging.INFO)
+
     print("father_path = ", father_path)
     basicpath = os.path.dirname(father_path)
     result_value = []

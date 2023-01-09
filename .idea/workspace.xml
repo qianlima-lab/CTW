@@ -4,18 +4,57 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="a0475960-4e67-4a8e-94ab-1ab00e40a270" name="Changes" comment="Changes" />
+    <list default="true" id="9e90555d-e331-49ff-af20-46c31169801a" name="变更" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/picture/table1.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/picture/table2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/picture/table3.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_CAug_vs_AAug.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_CAug_vs_AAug.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_ablation.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_ablation.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/run_sym30.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_sym30.sh" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/BMM_single_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/BMM_single_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/SREA_single_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/SREA_single_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/Sel_CL_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sel_CL_experiment.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram" beforeDir="false" afterPath="$PROJECT_DIR$/src/cd-diagram" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram/FordA/FordA_TEST.tsv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram/FordA/FordA_TRAIN.tsv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram/InsectWingbeatSound/InsectWingbeatSound_TEST.tsv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram/InsectWingbeatSound/InsectWingbeatSound_TRAIN.tsv" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram/cd-diagram.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/cd-diagram/main.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plot/plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plot/plot.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plot/plot_loss_with_seaborn.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plot/plot_loss_with_seaborn.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/plot/visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plot/visualization.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/ucr_data/load_ucr_pre.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ucr_data/load_ucr_pre.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/SREA_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_SREA.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/MemoryMoCo.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/MemoryMoCo.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/other_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/other_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/test_eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/test_eval.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_mixup.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_mixup.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_mixup_v2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_noise.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_noise.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_noise_v2.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/decorators.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/decorators.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/dividemix_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/dividemix_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/log_utils.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/plotting_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/plotting_utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/saver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/saver.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_BMM.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_BMM.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_Sel_CL.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_Sel_CL.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_coteaching.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_coteaching.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_dividemix.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_dividemix.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_sigua.py" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_single_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_single_model.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/utils/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils.py" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
     <option name="LAST_RESOLUTION" value="IGNORE" />
-  </component>
-  <component name="FileTemplateManagerImpl">
-    <option name="RECENT_TEMPLATES">
-      <list>
-        <option value="Python Script" />
-      </list>
-    </option>
   </component>
   <component name="Git.Settings">
     <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
@@ -28,7 +67,7 @@
       <filtered-out-file-type name="COMMIT_BY_MESSAGE" />
     </file-type-list>
   </component>
-  <component name="ProjectId" id="2GTylflRxgErJPKlGOungHZaQnd" />
+  <component name="ProjectId" id="2Ibsl28910YvbqNwAvwqcZftWHR" />
   <component name="ProjectLevelVcsManager" settingsEditedManually="true" />
   <component name="ProjectViewState">
     <option name="hideEmptyMiddlePackages" value="true" />
@@ -37,13 +76,13 @@
   <component name="PropertiesComponent">
     <property name="RunOnceActivity.OpenProjectViewOnStart" value="true" />
     <property name="RunOnceActivity.ShowReadmeOnStart" value="true" />
-    <property name="WebServerToolWindowFactoryState" value="true" />
+    <property name="WebServerToolWindowFactoryState" value="false" />
     <property name="WebServerToolWindowPanel.toolwindow.highlight.mappings" value="true" />
     <property name="WebServerToolWindowPanel.toolwindow.highlight.symlinks" value="true" />
     <property name="WebServerToolWindowPanel.toolwindow.show.date" value="false" />
     <property name="WebServerToolWindowPanel.toolwindow.show.permissions" value="false" />
     <property name="WebServerToolWindowPanel.toolwindow.show.size" value="false" />
-    <property name="credentialsType com.jetbrains.python.remote.PyCreateRemoteInterpreterDialog$PyCreateRemoteSdkForm" value="Web Deployment" />
+    <property name="credentialsType com.jetbrains.python.remote.PyCreateRemoteInterpreterDialog$PyCreateRemoteSdkForm" value="Web 部署" />
     <property name="last_opened_file_path" value="$PROJECT_DIR$" />
     <property name="node.js.detected.package.eslint" value="true" />
     <property name="node.js.detected.package.tslint" value="true" />
@@ -51,13 +90,29 @@
     <property name="node.js.selected.package.tslint" value="(autodetect)" />
     <property name="settings.editor.selected.configurable" value="com.jetbrains.python.configuration.PyActiveSdkModuleConfigurable" />
   </component>
-  <component name="RecentsManager">
-    <key name="MoveFile.RECENT_KEYS">
-      <recent name="F:\experiment_data\CTW_code\src\utils" />
-      <recent name="F:\experiment_data\CTW_code\src\plot" />
-    </key>
-  </component>
-  <component name="RunManager">
+  <component name="RunManager" selected="Python.main">
+    <configuration name="BMM_single_experiment" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CTW_code" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/BMM_single_experiment.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <configuration name="Sel_CL_experiment" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
       <module name="CTW_code" />
       <option name="INTERPRETER_OPTIONS" value="" />
@@ -80,34 +135,148 @@
       <option name="INPUT_FILE" value="" />
       <method v="2" />
     </configuration>
+    <configuration name="config" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CTW_code" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$USER_HOME$/AppData/Local/JetBrains/PyCharm2021.2/remote_sources/-1222497237/1117411364/logging" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$USER_HOME$/AppData/Local/JetBrains/PyCharm2021.2/remote_sources/-1222497237/1117411364/logging/config.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="global_log" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CTW_code" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src/config" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/config/global_log.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
+    <configuration name="main" type="PythonConfigurationType" factoryName="Python" temporary="true" nameIsGenerated="true">
+      <module name="CTW_code" />
+      <option name="INTERPRETER_OPTIONS" value="" />
+      <option name="PARENT_ENVS" value="true" />
+      <envs>
+        <env name="PYTHONUNBUFFERED" value="1" />
+      </envs>
+      <option name="SDK_HOME" value="" />
+      <option name="WORKING_DIRECTORY" value="$PROJECT_DIR$/src" />
+      <option name="IS_MODULE_SDK" value="true" />
+      <option name="ADD_CONTENT_ROOTS" value="true" />
+      <option name="ADD_SOURCE_ROOTS" value="true" />
+      <EXTENSION ID="PythonCoverageRunConfigurationExtension" runner="coverage.py" />
+      <option name="SCRIPT_NAME" value="$PROJECT_DIR$/src/main.py" />
+      <option name="PARAMETERS" value="" />
+      <option name="SHOW_COMMAND_LINE" value="false" />
+      <option name="EMULATE_TERMINAL" value="false" />
+      <option name="MODULE_MODE" value="false" />
+      <option name="REDIRECT_INPUT" value="false" />
+      <option name="INPUT_FILE" value="" />
+      <method v="2" />
+    </configuration>
     <recent_temporary>
       <list>
+        <item itemvalue="Python.main" />
         <item itemvalue="Python.Sel_CL_experiment" />
+        <item itemvalue="Python.BMM_single_experiment" />
+        <item itemvalue="Python.global_log" />
+        <item itemvalue="Python.config" />
       </list>
     </recent_temporary>
   </component>
-  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="application-level" UseSingleDictionary="true" transferred="true" />
+  <component name="SpellCheckerSettings" RuntimeDictionaries="0" Folders="0" CustomDictionaries="0" DefaultDictionary="应用程序级" UseSingleDictionary="true" transferred="true" />
   <component name="TaskManager">
-    <task active="true" id="Default" summary="Default task">
-      <changelist id="a0475960-4e67-4a8e-94ab-1ab00e40a270" name="Changes" comment="" />
-      <created>1666427021219</created>
+    <task active="true" id="Default" summary="默认任务">
+      <changelist id="9e90555d-e331-49ff-af20-46c31169801a" name="变更" comment="" />
+      <created>1670461765718</created>
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
-      <updated>1666427021219</updated>
-      <workItem from="1666427024628" duration="15647000" />
-      <workItem from="1666455853630" duration="1501000" />
-      <workItem from="1666494286996" duration="19861000" />
-      <workItem from="1666572799045" duration="1318000" />
-      <workItem from="1666592809681" duration="1729000" />
-      <workItem from="1666680144967" duration="83000" />
-      <workItem from="1666692304324" duration="287000" />
+      <updated>1670461765718</updated>
+      <workItem from="1670461780673" duration="40589000" />
+      <workItem from="1670549618525" duration="13369000" />
+      <workItem from="1670635207809" duration="2420000" />
+      <workItem from="1670724483890" duration="827000" />
+      <workItem from="1670733320053" duration="7297000" />
+      <workItem from="1670813795168" duration="7726000" />
+      <workItem from="1670905561010" duration="1090000" />
+      <workItem from="1670913058852" duration="1959000" />
+      <workItem from="1670939863673" duration="1263000" />
+      <workItem from="1670945574207" duration="520000" />
+      <workItem from="1670979015259" duration="1322000" />
+      <workItem from="1671028142027" duration="613000" />
+      <workItem from="1671111275790" duration="2196000" />
+      <workItem from="1671180160270" duration="3805000" />
+      <workItem from="1671464578846" duration="205000" />
+      <workItem from="1671526677691" duration="795000" />
+      <workItem from="1671546210562" duration="1201000" />
+      <workItem from="1671591119805" duration="1554000" />
+      <workItem from="1671609460485" duration="192000" />
+      <workItem from="1671620401790" duration="1273000" />
+      <workItem from="1672020427358" duration="641000" />
+      <workItem from="1672036148521" duration="767000" />
+      <workItem from="1672215067852" duration="533000" />
+      <workItem from="1672626817929" duration="9117000" />
+      <workItem from="1672676041038" duration="2341000" />
+      <workItem from="1672711775994" duration="2022000" />
+      <workItem from="1672744381147" duration="2228000" />
+      <workItem from="1672799024761" duration="1132000" />
+      <workItem from="1672828154919" duration="2073000" />
+      <workItem from="1672926739469" duration="1690000" />
+      <workItem from="1672972304858" duration="189000" />
+      <workItem from="1672974790069" duration="21902000" />
+      <workItem from="1673057750087" duration="29243000" />
+      <workItem from="1673165163789" duration="746000" />
+      <workItem from="1673184224750" duration="2010000" />
     </task>
     <servers />
   </component>
   <component name="TypeScriptGeneratedFilesManager">
     <option name="version" value="3" />
   </component>
+  <component name="Vcs.Log.Tabs.Properties">
+    <option name="TAB_STATES">
+      <map>
+        <entry key="MAIN">
+          <value>
+            <State />
+          </value>
+        </entry>
+      </map>
+    </option>
+    <option name="oldMeFiltersMigrated" value="true" />
+  </component>
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
-    <SUITE FILE_PATH="coverage/CTW_code$Sel_CL_experiment.coverage" NAME="Sel_CL_experiment Coverage Results" MODIFIED="1666513324475" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/CTW_code$Sel_CL_experiment.coverage" NAME="Sel_CL_experiment 覆盖结果" MODIFIED="1671112121884" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/CTW_code$global_log.coverage" NAME="global_log 覆盖结果" MODIFIED="1670471273551" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/config" />
+    <SUITE FILE_PATH="coverage/CTW_code$main.coverage" NAME="main 覆盖结果" MODIFIED="1673099844585" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/CTW_code$BMM_single_experiment.coverage" NAME="BMM_single_experiment 覆盖结果" MODIFIED="1670831030295" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/CTW_code$config.coverage" NAME="config 覆盖结果" MODIFIED="1670466695686" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/AppData/Local/JetBrains/PyCharm2021.2/remote_sources/-1222497237/1117411364/logging" />
   </component>
 </project>

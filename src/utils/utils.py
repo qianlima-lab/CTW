@@ -18,6 +18,7 @@ from sklearn.metrics import confusion_matrix, accuracy_score, f1_score, \
 from sklearn.mixture import GaussianMixture as GMM
 from torch.autograd import Variable
 
+
 # from src.utils.plotting_utils import plot_cm
 # import src.utils.plotting_utils as plt
 from src.utils.metrics import evaluate_multi
@@ -334,7 +335,12 @@ def evaluate_model_multi(model, dataloder, y_true, x_true,
 
 
 def evaluate_model(model, dataloder, y_true):
-    yhat = predict(model, dataloder)
+    if isinstance(model,list) and model[1] is not None:
+        yhat1 = predict(model[0], dataloder)
+        yhat2 = predict(model[1], dataloder)
+        yhat = (yhat1+yhat2)/2
+    else:
+        yhat = predict(model, dataloder)
 
     # Classification
     y_hat_proba = softmax(yhat, axis=1)
@@ -480,7 +486,6 @@ def noisify_instance(train_data,train_labels,noise_rate,num_class):
 
 def get_instance_noisy_label(n, train_data,labels, num_classes, norm_std, seed):
     # n -> noise_rate
-    # dataset -> mnist, cifar10 # not train_loader
     # labels -> labels (targets)
     # label_num -> class number
     # feature_size -> the size of input images (e.g. 28*28)
@@ -757,6 +762,13 @@ def sigua_loss(model_loss, rt, bad_weight,last_sel_id=None,current_batch_idx=Non
     return model_loss,current_batch_idx[good_data_idx].cpu().numpy()
 
 def create_synthetic_dataset(pattern_len=[0.25], pattern_pos=[0.1, 0.65], ts_len=128, ts_n=128):
+    '''
+    :param pattern_len: the length of unique pattern each class
+    :param pattern_pos: the position of unique pattern each class
+    :param ts_len: the length of time series 
+    :param ts_n: numbers of time series
+    :return: 
+    '''
     random.seed(1234)
     np.random.seed(1234)
 
@@ -833,8 +845,7 @@ def to_one_hot(classes,y):
         y=y.astype(int)
     return(np.eye(classes)[y])
 
-def small_loss_criterion_auto_rate2(model_loss,loss_all=None,args=None,epoch=None,x_idxs=None,labels=None,y_clean=None,
-                                    estimate_noise_rate=None):
+def small_loss_criterion_EPS(model_loss,loss_all=None,args=None,epoch=None,x_idxs=None,labels=None):
     '''
         select confident samples by EPS
     '''
@@ -849,12 +860,15 @@ def small_loss_criterion_auto_rate2(model_loss,loss_all=None,args=None,epoch=Non
 
     gamma = args.gamma
 
-    if args.mean_loss_len > args.warmup:
+    if args.mean_loss_len > epoch:
         loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
-            loss_all[x_idxs, (epoch - args.warmup + 1):epoch].mean(axis=1))
+            loss_all[x_idxs, :epoch].mean(axis=1))
     else:
-        loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
-            loss_all[x_idxs, (epoch - args.mean_loss_len + 1):epoch].mean(axis=1))
+        if args.mean_loss_len < 2:
+            loss_mean = loss_all[x_idxs, epoch]
+        else:
+            loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
+                loss_all[x_idxs, (epoch - args.mean_loss_len + 1):epoch].mean(axis=1))
 
     labels_numpy = labels.detach().cpu().numpy()
     recreate_idx=torch.tensor([]).long()
@@ -874,7 +888,6 @@ def small_loss_criterion_auto_rate2(model_loss,loss_all=None,args=None,epoch=Non
 
     _, model_sm_idx = torch.topk(torch.from_numpy(standar_loss), k=int(standar_loss.size*(standar_loss<=standar_loss.mean()).mean()), largest=False)
 
-
     model_sm_idxs = recreate_idx[model_sm_idx]
 
     model_loss_filter = torch.zeros((model_loss.size(0))).to(device)
@@ -883,11 +896,11 @@ def small_loss_criterion_auto_rate2(model_loss,loss_all=None,args=None,epoch=Non
 
     return model_loss, model_sm_idxs
 
-def small_loss_criterion_auto_rate1(model_loss,loss_all=None,args=None,epoch=None,x_idxs=None,labels=None,p_threshold=0.5):
+def select_class_by_class(model_loss,loss_all=None,args=None,epoch=None,x_idxs=None,labels=None,p_threshold=0.5):
     '''
     select confident samples class by class:
-        auto_rate == 3 means select samples by GMM,
-        otherwise (auto_rate == 1) select confident samples using average loss.
+        sel_method == 2 means select samples by GMM,
+        otherwise (sel_method == 1) select confident samples according to average loss.
     '''
     gamma = args.gamma
     if args.mean_loss_len > args.warmup:
@@ -907,7 +920,7 @@ def small_loss_criterion_auto_rate1(model_loss,loss_all=None,args=None,epoch=Non
     for i in range(args.nbins):
         if (labels_numpy==i).sum()>1:
             each_label_loss = loss_mean[labels_numpy==i]
-            if args.auto_rate==3:
+            if args.sel_method==2:
                 clean_labels = []
 
                 cls_index = indexes[labels_numpy == i]
@@ -933,7 +946,7 @@ def small_loss_criterion_auto_rate1(model_loss,loss_all=None,args=None,epoch=Non
 
     return model_loss, all_sm_idx
 
-def small_loss_criterion_without_eliminate(model_loss, rt,loss_all=None,args=None,epoch=None,x_idxs=None,estimate_noise_rate=None):
+def small_loss_criterion_without_EPS(model_loss, rt,loss_all=None,args=None,epoch=None,x_idxs=None,estimate_noise_rate=None):
     '''
     select confident samples w/o EPS
     '''
@@ -945,10 +958,15 @@ def small_loss_criterion_without_eliminate(model_loss, rt,loss_all=None,args=Non
             loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
                 loss_all[x_idxs, (epoch - args.warmup + 1):epoch].mean(axis=1))
         else:
-            loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
-                loss_all[x_idxs, (epoch - args.mean_loss_len + 1):epoch].mean(axis=1))
+            if args.mean_loss_len < 2:
+                loss_mean = loss_all[x_idxs,epoch]
+            else:
+                loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
+                    loss_all[x_idxs, (epoch - args.mean_loss_len + 1):epoch].mean(axis=1))
 
-    _, model_sm_idx = torch.topk(torch.from_numpy(loss_mean), k=int(model_loss.size(0) * ((model_loss <= model_loss.mean()).cpu().numpy().mean())), largest=False)
+        _, model_sm_idx = torch.topk(torch.from_numpy(loss_mean), 
+                                     k=int(model_loss.size(0) * ((model_loss <= model_loss.mean()).cpu().numpy().mean())), 
+                                     largest=False)
 
     model_loss_filter = torch.zeros((model_loss.size(0))).to(device)
     model_loss_filter[model_sm_idx] = 1.0
@@ -968,8 +986,11 @@ def small_loss_criterion(model_loss, rt,loss_all=None,args=None,epoch=None,x_idx
             loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
                 loss_all[x_idxs, (epoch - args.warmup + 1):epoch].mean(axis=1))
         else:
-            loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
-                loss_all[x_idxs, (epoch - args.mean_loss_len + 1):epoch].mean(axis=1))
+            if args.mean_loss_len < 2:
+                loss_mean = loss_all[x_idxs, epoch]
+            else:
+                loss_mean = gamma * loss_all[x_idxs, epoch] + (1 - gamma) * (
+                    loss_all[x_idxs, (epoch - args.mean_loss_len + 1):epoch].mean(axis=1))
 
         _, model_sm_idx = torch.topk(torch.from_numpy(loss_mean), k=int(int(model_loss.size(0)) * rt), largest=False)
 

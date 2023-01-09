@@ -1,13 +1,14 @@
-from __future__ import print_function
 from src.utils.Sel_CL_utils.AverageMeter import AverageMeter
 from src.utils.Sel_CL_utils.NCECriterion import NCESoftmaxLoss
 from src.utils.Sel_CL_utils.other_utils import set_bn_train, moment_update
 from src.utils.Sel_CL_utils.utils_mixup import *
 from src.utils.Sel_CL_utils.losses import *
+
 import time
 import warnings
 from apex import amp
 import tsaug
+
 
 warnings.filterwarnings('ignore')
 
@@ -168,13 +169,13 @@ def train_sel(args, scheduler,model,model_ema,contrast,queue,device, train_loade
         train_loss_3.update(lossClassif.item(), img1.size(0))        
           
         # if counter % 15 == 0:
-        print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Learning rate: {:.6f}'.format(
-            epoch, counter * len(img1), len(train_loader.dataset),
-                   100. * counter / len(train_loader), 0,
-            optimizer.param_groups[0]['lr']))
+        # print('Train Epoch: {} [{}/{} ({:.0f}%)]\tLoss: {:.6f}, Learning rate: {:.6f}'.format(
+        #     epoch, counter * len(img1), len(train_loader.dataset),
+        #            100. * counter / len(train_loader), 0,
+        #     optimizer.param_groups[0]['lr']))
         # counter = counter + 1
-    print('train_sel_loss',train_loss_1.avg,'train_simi_loss',train_loss_2.avg,'train_class_loss',train_loss_3.avg)
-    print('train time', time.time()-end)
+    print(f'train_sel_loss {train_loss_1.avg} train_simi_loss {train_loss_2.avg} train_class_loss {train_loss_3.avg}')
+    print(f'train time {time.time()-end}')
 
 def train_uns(args, scheduler,model,model_ema,contrast,queue,device, train_loader, optimizer, epoch):
     train_loss_1 = AverageMeter()   
@@ -239,8 +240,8 @@ def train_uns(args, scheduler,model,model_ema,contrast,queue,device, train_loade
                        100. * counter / len(train_loader), 0,
                 optimizer.param_groups[0]['lr']))
         counter = counter + 1
-    print('train_uns_loss',train_loss_1.avg)
-    print('train time', time.time()-end)
+    print(f'train_uns_loss {train_loss_1.avg}')
+    # print(f'train time {time.time()-end}')
     
 def train_sup(args, scheduler,model,model_ema,contrast,queue,device, train_loader, train_selected_loader, optimizer, epoch,noisy_pairs):
     train_loss_1 = AverageMeter()
@@ -371,8 +372,8 @@ def train_sup(args, scheduler,model,model_ema,contrast,queue,device, train_loade
                        100. * counter / len(train_loader), 0,
                 optimizer.param_groups[0]['lr']))
         counter = counter + 1
-    print('train_loss_sup',train_loss_1.avg,'train_class_loss',train_loss_3.avg)
-    print('train time', time.time()-end)
+    print(f'train_loss_sup {train_loss_1.avg} train_class_loss {train_loss_3.avg}')
+    print(f'train time {time.time()-end}')
 
 def pair_selection(args, net, device, trainloader, testloader, epoch):
 
@@ -520,17 +521,18 @@ def pair_selection(args, net, device, trainloader, testloader, epoch):
         idx_class = (idx_class==1.0).nonzero().squeeze()
         discrepancy_class = discrepancy_measure2[idx_class]
 
-        if num_samples2select_class>=samplesPerClass:
+        if num_samples2select_class>=samplesPerClass or num_samples2select_class == 0:
             k_corrected = samplesPerClass
         else:
             k_corrected = num_samples2select_class
 
         top_clean_class_relative_idx = torch.topk(discrepancy_class, k=int(k_corrected), largest=False, sorted=False)[1]
 
-        agreement_measure[idx_class[top_clean_class_relative_idx]] = 1.0
+        if idx_class.dim()!=0:
+            agreement_measure[idx_class[top_clean_class_relative_idx]] = 1.0
     
     selected_examples=agreement_measure
-    print('selected examples',sum(selected_examples))
+    # print(f'selected examples {sum(selected_examples)}')
     # trainloader.dataset.transform = transform_bak
     ## select pairs 
     with torch.no_grad():
@@ -543,7 +545,12 @@ def pair_selection(args, net, device, trainloader, testloader, epoch):
         selected_pairs = noisy_pairs[index_selected.unsqueeze(1).expand(total_selected_num,total_selected_num),
                                      index_selected.unsqueeze(0).expand(total_selected_num,total_selected_num)].clone()
         temp_graph = smiliar_graph_all[index_selected.unsqueeze(1).expand(total_selected_num,total_selected_num),index_selected.unsqueeze(0).expand(total_selected_num,total_selected_num)]         
-        selected_th=np.quantile(temp_graph[selected_pairs],args.beta)
+        try:
+            selected_th=np.quantile(temp_graph[selected_pairs],args.beta)
+        except:
+            print('\ntemp_graph.shape:\n',temp_graph.shape,'temp_graph:\n',temp_graph)
+            print('\nselected_pairs.shape:\n', selected_pairs.shape, 'selected_pairs:\n', selected_pairs)
+            raise
         print('selected_th',selected_th)
         temp = torch.zeros(total_num,total_num).type(torch.uint8)
         noisy_pairs = torch.where(smiliar_graph_all<selected_th,temp,noisy_pairs.type(torch.uint8)).type(torch.bool)

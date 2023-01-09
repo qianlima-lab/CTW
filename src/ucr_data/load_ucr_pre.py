@@ -187,7 +187,7 @@ def load_txt_uea(dataset_path):
 
 
 def load_ucr(dataset='CBF'):
-    print("Test dataset name = ", dataset)
+    print(f"Test dataset name = {dataset}")
     current_path = os.path.abspath(__file__)
     father_path = os.path.abspath(os.path.dirname(current_path) + os.path.sep + ".")
     father_path = father_path + "/data_files/"

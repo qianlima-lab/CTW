@@ -106,7 +106,7 @@ def create_hard_labels(embedding, centers, y_obs, yhat_hist, w_yhat, w_c, w_obs,
     return ystar
 
 
-def train_model(model, train_data, valid_data, epochs, correct, args, saver=None, plot_loss_flag=True, test_data=None,
+def train_model(model, train_data, epochs, correct, args, saver=None, plot_loss_flag=True, test_data=None,
                 dataset_name=None, pic_n=None):
     # Init variables
     network = model.get_name()
@@ -121,9 +121,7 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
     classes = args.nbins
 
     avg_train_loss = []
-    avg_valid_loss = []
     avg_train_acc = []
-    avg_valid_acc = []
 
     avg_test_acc = []
 
@@ -143,7 +141,7 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
 
     print('-' * shutil.get_terminal_size().columns)
     s = 'TRAINING MODEL {} WITH {} LOSS - Correction: {}'.format(network, loss_class._get_name(), str(correct))
-    print(s)
+    print(f'{s}')
     print('-' * shutil.get_terminal_size().columns)
 
     # Train loop
@@ -154,8 +152,8 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
 
         all_knn_high_acc = []
         all_knn_low_acc = []
+        test_f1s = []
 
-        f1s = []
         for idx_epoch in range(1, epochs + 1):
             epochstart = time()
             train_loss = []
@@ -178,9 +176,7 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
                         embedding.append(output.squeeze(-1).cpu().numpy())
                         targets.append(target.numpy())
                 embedding = np.concatenate(embedding, axis=0)
-                ####
 
-                ####
                 targets = np.concatenate(targets, axis=0)
                 predicted = kmeans.fit_predict(embedding)
                 reassignment, accuracy = cluster_accuracy(targets, predicted)
@@ -207,7 +203,6 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
 
             for data, target, data_idx,_ in train_data:
 
-                # print("load train size test data.shape = ", data.shape)
                 all_raw_data.append(data.reshape(data.shape[0], -1).numpy())
                 target = target.to(device)
                 data = data.to(device)
@@ -292,24 +287,17 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
             all_raw_data = np.concatenate(all_raw_data)
 
 
-            # print("KNN data test all_data.shape = ", all_data.shape, all_label.shape)
             indices, accuracy = mine_nearest_neighbors(features=all_data.astype(np.float32), real_label=all_label, topk=20,
                                                        calculate_accuracy=True)
-            # print("20 near neighbors acc = ", accuracy)
             if idx_epoch == 1:
                 indices, l_accuracy = mine_nearest_neighbors(features=all_raw_data.astype(np.float32), real_label=all_label,
                                                            topk=20,
                                                            calculate_accuracy=True)
                 all_knn_low_acc.append(round(l_accuracy, 4))
-                # print("20 raw near neighbors acc = ", accuracy)
             all_knn_low_acc.append(round(accuracy, 4))
 
 
-            # print("20 near neighbors acc = ", accuracy)
             scheduler.step()
-            # Validate
-            valid_loss, valid_acc = eval_model(model, valid_data, [loss_ae, loss_class, loss_centroids],
-                                               [alpha_, beta_, gamma_])
 
             test_loss, _ = eval_model(model, test_data, [loss_ae, loss_class, loss_centroids],
                                                [alpha_, beta_, gamma_])
@@ -318,28 +306,25 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
             # calculate average loss over an epoch
             train_loss_epoch = np.average(train_loss)
             avg_train_loss.append(train_loss_epoch)
-            avg_valid_loss.append(valid_loss)
 
             train_acc_epoch = 100 * np.average(train_acc)
             train_acc_corr_epoch = 100 * np.average(train_acc_corrected)
 
             avg_train_acc.append(train_acc_epoch)
-            avg_valid_acc.append(valid_acc)
             avg_test_acc.append(test_acc)
-            f1s.append(f1)
+            test_f1s.append(f1)
 
             print(
-                'Epoch [{}/{}], Time:{:.3f} - TrAcc:{:.3f} - TrAccCorr:{:.3f} - ValAcc:{:.3f} - TestAcc:{:.3f} - TrLoss:{:.5f} - '
-                'ValLoss:{:.5f} - lr:{:.5f} - alpha:{:.3f} - beta:{:.3f} - gamma:{:.3f} - rho:{:.3f} - eps:{:.3f}'
+                'Epoch [{}/{}], Time:{:.3f} - TrAcc:{:.3f} - TrAccCorr:{:.3f} - TestAcc:{:.3f} - TrLoss:{:.5f} - '
+                'lr:{:.5f} - alpha:{:.3f} - beta:{:.3f} - gamma:{:.3f} - rho:{:.3f} - eps:{:.3f}'
                 ' - w_obs:{:.3f} - w_yhat:{:.3f} - w_cen:{:.3f}'
                     .format(idx_epoch, epochs, time() - epochstart, train_acc_epoch, train_acc_corr_epoch,
-                            valid_acc, test_acc, train_loss_epoch, valid_loss, optimizer.param_groups[0]['lr'],
+                            test_acc, train_loss_epoch, optimizer.param_groups[0]['lr'],
                             alpha_, beta_, gamma_, rho_, epsilon_, w_obs, w_yhat, w_c))
 
             all_losses.append(epoch_losses)
             all_indices.append(epoch_indices)
 
-        # print("plt end all_knn_low_acc.shape = ", len(all_knn_low_acc), all_knn_low_acc[:5])
         # if pic_n is None:
         #     plt_knn_acc(high_acc=all_knn_low_acc, low_acc=all_knn_low_acc, dataset_name=dataset_name, pic_n="only")
         # else:
@@ -355,25 +340,19 @@ def train_model(model, train_data, valid_data, epochs, correct, args, saver=None
     ################################################
 
     if plot_loss_flag:
-        plot_loss(avg_train_loss, avg_valid_loss, loss_class._get_name(), network, kind='loss', saver=saver,
-                  early_stop=0)
-        plot_loss(avg_train_acc, avg_valid_acc, loss_class._get_name(), network, kind='accuracy', saver=saver,
-                  early_stop=0)
+        plot_loss(avg_train_loss, loss_class._get_name(), network, kind='loss', saver=saver)
+        plot_loss(avg_train_acc,  loss_class._get_name(), network, kind='accuracy', saver=saver)
 
     if args.plt_loss_hist:
         plot_train_loss_and_test_acc(avg_train_loss,np.array(avg_test_acc)/100,args,pred_precision=np.array(avg_train_acc)/100,
                                      saver=saver,save=True)
 
-    training_results = dict()
-    training_results['max_valid_acc'] = max(avg_test_acc)
-    training_results['max_valid_acc_epoch'] = avg_test_acc.index(max(avg_test_acc))
-    training_results['avg_last_ten_valid_acc'] = np.mean(avg_test_acc[-10:])
-    training_results['max_valid_f1'] = np.max(f1s)
-    training_results['max_valid_f1_epoch'] = np.argmax(f1s)
-    training_results['avg_last_ten_valid_f1'] = np.mean(f1s[-10:])
 
-    return model, loss_centroids, (all_losses, all_indices), training_results
-    # return model, loss_centroids, (None, None), training_results
+    test_results_last_ten_epochs = dict()
+    test_results_last_ten_epochs['last_ten_test_acc'] = avg_test_acc[-10:]
+    test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
+
+    return model, loss_centroids, (all_losses, all_indices), test_results_last_ten_epochs
 
 def test_step(data_loader, model):
     model = model.eval()
@@ -434,19 +413,16 @@ def eval_model(model, loader, list_loss, coeffs):
     return np.array(losses).mean(), 100 * np.average(accs)
 
 
-def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, Y_train_clean, Y_valid_clean,
+def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
                      mask_train, ni, args, saver, correct_labels, plt_embedding=True, plt_loss_hist=True,
                      plt_recons=False, plt_cm=True, dataset_name=None, pic_n=None):
     classes = len(np.unique(Y_train_clean))
 
     train_dataset = TensorDataset(torch.from_numpy(x_train).float(), torch.from_numpy(Y_train).long(),
                                   torch.from_numpy(np.arange(len(Y_train))), torch.from_numpy(mask_train))
-    valid_dataset = TensorDataset(torch.from_numpy(x_valid).float(), torch.from_numpy(Y_valid).long())
     test_dataset = TensorDataset(torch.from_numpy(x_test).float(), torch.from_numpy(Y_test).long())
 
     train_loader = DataLoader(train_dataset, batch_size=args.batch_size, shuffle=True, drop_last=False,
-                              num_workers=args.num_workers, pin_memory=True)
-    valid_loader = DataLoader(valid_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
                               num_workers=args.num_workers, pin_memory=True)
     test_loader = DataLoader(test_dataset, batch_size=args.batch_size, shuffle=False, drop_last=False,
                              num_workers=args.num_workers, pin_memory=True)
@@ -455,50 +431,38 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
 
     ######################################################################################################
     # Train model
-    model, clusterer, (train_losses, train_idxs), training_results = train_model(model, train_loader, valid_loader,
+    model, clusterer, (train_losses, train_idxs), test_results_last_ten_epochs = train_model(model, train_loader,
                                                                epochs=args.epochs, args=args, correct=correct_labels,
                                                                saver=saver, plot_loss_flag=args.plt_loss,
                                                             test_data=test_loader,dataset_name=dataset_name, pic_n=pic_n)
     cluster_centers = clusterer.centers.detach().cpu().numpy()
     print('Train ended')
-    # print("training_results = ", training_results)
-
-    # training_results = []  ## max_valid, avg_last_ten_acc, avg_last_ten_valid
-
-    ######################################################################################################
-    # Eval
-    train_results = evaluate_class_recons(model, x_train, Y_train, Y_train_clean, train_eval_loader, ni, saver,
-                                          'CNN', 'Train', correct_labels, plt_cm=plt_cm, plt_lables=False,
-                                          plt_recons=plt_recons)
-    valid_results = evaluate_class_recons(model, x_valid, Y_valid, Y_valid_clean, valid_loader, ni, saver,
-                                          'CNN', 'Valid', correct_labels, plt_cm=plt_cm, plt_lables=False,
-                                          plt_recons=False)
-    test_results = evaluate_class_recons(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
-                                         'Test', correct_labels, plt_cm=plt_cm, plt_lables=False, plt_recons=plt_recons)
-
-
-    test_results['max_valid_acc'] = training_results['max_valid_acc']
-    test_results['max_valid_acc_epoch'] = training_results['max_valid_acc_epoch']
-    test_results['avg_last_ten_valid_acc'] = training_results['avg_last_ten_valid_acc']
-    test_results['max_valid_f1'] = training_results['max_valid_f1']
-    test_results['max_valid_f1_epoch'] = training_results['max_valid_f1_epoch']
-    test_results['avg_last_ten_valid_f1'] = training_results['avg_last_ten_valid_f1']
-
+    # print("test_results_last_ten_epochs = ", test_results_last_ten_epochs)
 
     if plt_embedding:
-        plot_embedding(model.encoder, train_eval_loader, valid_loader, cluster_centers, Y_train_clean, Y_valid_clean,
-                       Y_train, Y_valid, network='CNN', saver=saver, correct=correct_labels)
+        plot_embedding(model.encoder, train_eval_loader, cluster_centers, Y_train_clean,
+                       Y_train, network='CNN', saver=saver, correct=correct_labels)
 
     # if ni > 0 and plt_loss_hist:
     #     visualize_training_loss(train_losses, train_idxs, mask_train, 'CNN', classes, ni, saver,
     #                             correct=correct_labels)
 
+    ########################################## Eval ############################################
+
+    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
+    test_results = evaluate_class_recons(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
+                                         'Test', correct_labels, plt_cm=plt_cm, plt_lables=False, plt_recons=plt_recons)
+    test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
+    test_results['avg_last_ten_test_f1'] = np.mean(test_results_last_ten_epochs['last_ten_test_f1'])
+
+    ###############################################################################################
+
     plt.close('all')
     torch.cuda.empty_cache()
-    return train_results, valid_results, test_results
+    return test_results
 
 
-def main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y_test_clean, saver,seeds=[0],
+def main_wrapper(args, x_train, x_test, Y_train_clean, Y_test_clean, saver,seed=None,
                  dataset_name=None, pic_n=None):
     classes = len(np.unique(Y_train_clean))
     args.nbins = classes
@@ -519,104 +483,94 @@ def main_wrapper(args, x_train, x_valid, x_test, Y_train_clean, Y_valid_clean, Y
 
     nParams = sum([p.nelement() for p in model.parameters()])
     s = 'MODEL: %s: Number of parameters: %s' % ('CNN', readable(nParams))
-    print(s)
+    print(f'{s}')
 
     ######################################################################################################
     print('Num Classes: ', classes)
     print('Train:', x_train.shape, Y_train_clean.shape, [(Y_train_clean == i).sum() for i in np.unique(Y_train_clean)])
-    print('Validation:', x_valid.shape, Y_valid_clean.shape,
-          [(Y_valid_clean == i).sum() for i in np.unique(Y_valid_clean)])
+
     print('Test:', x_test.shape, Y_test_clean.shape, [(Y_test_clean == i).sum() for i in np.unique(Y_test_clean)])
 
     ######################################################################################################
     # Main loop
     df_results = pd.DataFrame()
-    # seeds = np.random.choice(1000, args.n_runs, replace=False)
-    seeds = seeds
-    print("seeds = ", seeds)
+    if seed is None:
+        seed = np.random.choice(1000,1, replace=False)
+
     args.correct_start = args.init_centers + args.delta_start
     args.correct_end = args.init_centers + args.delta_start + args.delta_end
 
-    for run, seed in enumerate(seeds):
-        print()
-        print('#' * shutil.get_terminal_size().columns)
-        print('EXPERIMENT: {}/{} -- RANDOM SEED:{}'.format(run + 1, args.n_runs, seed).center(columns))
-        print('#' * shutil.get_terminal_size().columns)
-        print()
+    print()
+    print('#' * shutil.get_terminal_size().columns)
+    print('RANDOM SEED:{}'.format(seed).center(columns))
+    print('#' * shutil.get_terminal_size().columns)
+    print()
 
-        args.seed = seed
+    args.seed = seed
 
-        reset_seed_(seed)
-        model = reset_model(model)
-        # torch.save(model.state_dict(), os.path.join(saver.path, 'initial_weight.pt'))
+    # torch.save(model.state_dict(), os.path.join(saver.path, 'initial_weight.pt'))
 
-        test_results_main = collections.defaultdict(list)
-        test_corrected_results_main = collections.defaultdict(list)
-        saver_loop = SaverSlave(os.path.join(saver.path, f'seed_{seed}'))
-        # saver_loop.append_str(['SEED: {}'.format(seed), '\r\n'])
+    test_results_main = collections.defaultdict(list)
+    test_corrected_results_main = collections.defaultdict(list)
+    saver_loop = SaverSlave(os.path.join(saver.path, f'seed_{seed}'))
+    # saver_loop.append_str(['SEED: {}'.format(seed), '\r\n'])
 
-        i = 0
-        for ni in args.ni:
-            saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
-            for correct_labels in args.correct:
-                i += 1
-                # True or false
-                print('+' * shutil.get_terminal_size().columns)
-                print('HyperRun: %d/%d' % (i, len(args.ni) * len(args.correct)))
-                print('Label noise ratio: %.3f' % ni)
-                print('Correct labels:', correct_labels)
-                print('+' * shutil.get_terminal_size().columns)
+    ni = args.ni
 
-                reset_seed_(seed)
-                model = reset_model(model)
+    saver_slave = SaverSlave(os.path.join(saver.path, f'seed_{seed}', f'ratio_{ni}'))
 
-                Y_train, mask_train = flip_label(x_train,Y_train_clean, ni, args)
-                Y_valid, mask_valid = flip_label(x_valid,Y_valid_clean, ni, args)
-                Y_test = Y_test_clean
+    correct_labels = args.correct
+    # True or false
+    print('+' * shutil.get_terminal_size().columns)
+    print('Label noise ratio: %.3f' % ni)
+    print('Correct labels:', correct_labels)
+    print('+' * shutil.get_terminal_size().columns)
 
-                # Re-load initial weights
-                # model.load_state_dict(torch.load(os.path.join(saver.path, 'initial_weight.pt')))
+    reset_seed_(seed)
+    model = reset_model(model)
 
-                train_results, valid_results, test_results = train_eval_model(model, x_train, x_valid, x_test, Y_train,
-                                                                              Y_valid, Y_test, Y_train_clean,
-                                                                              Y_valid_clean,
-                                                                              mask_train, ni, args, saver_slave,
-                                                                              correct_labels,
-                                                                              plt_embedding=args.plt_embedding,
-                                                                              plt_loss_hist=args.plt_loss_hist,
-                                                                              plt_recons=args.plt_recons,
-                                                                              plt_cm=args.plt_cm,
-                                                                              dataset_name=dataset_name,
-                                                                              pic_n=pic_n)
-                if correct_labels:
-                    test_corrected_results_main = append_results_dict(test_corrected_results_main, test_results)
-                else:
-                    test_results_main = append_results_dict(test_results_main, test_results)
+    Y_train, mask_train = flip_label(x_train, Y_train_clean, ni, args)
+    Y_test = Y_test_clean
 
-                test_results['noise'] = ni
-                test_results['noise_type'] = map_losstype(args.label_noise)
-                test_results['seed'] = seed
-                test_results['correct'] = str(correct_labels)
-                test_results['losses'] = map_abg(args.abg)
-                test_results['track'] = args.track
-                test_results['init_centers'] = args.init_centers
-                test_results['delta_start'] = args.delta_start
-                test_results['delta_end'] = args.delta_end
+    # Re-load initial weights
+    # model.load_state_dict(torch.load(os.path.join(saver.path, 'initial_weight.pt')))
 
-                # saver_seed.append_str(['Test Results:'])
-                # saver_seed.append_dict(test_results)
-                df_results = df_results.append(test_results, ignore_index=True)
+    test_results = train_eval_model(model, x_train, x_test, Y_train,
+                                    Y_test, Y_train_clean,
+                                    mask_train, ni, args, saver_slave,
+                                    correct_labels,
+                                    plt_embedding=args.plt_embedding,
+                                    plt_loss_hist=args.plt_loss_hist,
+                                    plt_recons=args.plt_recons,
+                                    plt_cm=args.plt_cm,
+                                    dataset_name=dataset_name,
+                                    pic_n=pic_n)
+    if correct_labels:
+        test_corrected_results_main = append_results_dict(test_corrected_results_main, test_results)
+    else:
+        test_results_main = append_results_dict(test_results_main, test_results)
 
-            if len(test_results_main):
-                keys = list(test_results_main.keys())
-            else:
-                keys = list(test_corrected_results_main.keys())
+    test_results['noise'] = ni
+    test_results['noise_type'] = map_losstype(args.label_noise)
+    test_results['seed'] = seed
+    test_results['correct'] = str(correct_labels)
+    test_results['losses'] = map_abg(args.abg)
+    test_results['track'] = args.track
+    test_results['init_centers'] = args.init_centers
+    test_results['delta_start'] = args.delta_start
+    test_results['delta_end'] = args.delta_end
 
-        if args.plt_cm:
-            fig_title = f"Data:{args.dataset} - Loss:{map_abg(args.abg)} - classes:{classes} - noise:{map_losstype(args.label_noise)}"
-            plot_results(df_results.loc[df_results.seed == seed], keys, saver_loop, title=fig_title,
-                         x='noise', hue='correct', col=None, kind='bar', style='whitegrid')
-
+    # saver_seed.append_str(['Test Results:'])
+    # saver_seed.append_dict(test_results)
+    df_results = df_results.append(test_results, ignore_index=True)
+    if len(test_results_main):
+        keys = list(test_results_main.keys())
+    else:
+        keys = list(test_corrected_results_main.keys())
+    if args.plt_cm:
+        fig_title = f"Data:{args.dataset} - Loss:{map_abg(args.abg)} - classes:{classes} - noise:{map_losstype(args.label_noise)}"
+        plot_results(df_results.loc[df_results.seed == seed], keys, saver_loop, title=fig_title,
+                     x='noise', hue='correct', col=None, kind='bar', style='whitegrid')
     if args.plt_cm:
         fig_title = f"Dataset:{args.dataset} - Loss:{map_abg(args.abg)} - classes:{classes} - noise:{map_losstype(args.label_noise)}"
         plot_results(df_results, keys, saver, title=fig_title,
@@ -685,32 +639,6 @@ def get_features(model, dataloader,teacher_idx = None):
     return features, labels, data_idxs
 
 
-def fine(current_features, current_labels, fit='kmeans',p_threshold=0.7):
-    '''
-    prev_features, prev_labels: data from the previous round
-    current_features, current_labels: current round's data
-
-    return clean labels
-
-    if you insert the prev_features and prev_labels to None,
-    the algorthm divides the data based on the current labels and current features
-
-    '''
-    singular_vector_dict = get_singular_vector(current_features, current_labels)
-
-    scores = get_score(singular_vector_dict, features=current_features, labels=current_labels)
-
-    if 'kmeans' in fit:
-        clean_labels_index = cleansing(scores, current_labels)
-    elif 'gmm' in fit:
-        # fit a two-component GMM to the loss
-        clean_labels, probs = fit_mixture(scores, current_labels, p_threshold)
-    else:
-        raise NotImplemented
-
-    return clean_labels_index
-
-
 def cleansing(scores, labels):
     '''
     Assume the distribution of scores: bimodal spherical distribution.
@@ -747,43 +675,6 @@ def get_singular_vector(features, labels):
             pbar.update(1)
 
     return singular_vector_dict
-
-
-def fit_mixture(scores, labels, p_threshold=0.5):
-    '''
-    Assume the distribution of scores: bimodal gaussian mixture model
-
-    return clean labels
-    that belongs to the clean cluster by fitting the score distribution to GMM
-    '''
-
-    clean_labels = []
-    indexes = np.array(range(len(scores)))
-    probs = {}
-    for cls in np.unique(labels):
-        cls_index = indexes[labels == cls]
-        feats = scores[labels == cls]
-        feats_ = np.ravel(feats).astype(np.float).reshape(-1, 1)
-        gmm = GaussianMixture(n_components=2, covariance_type='full', tol=1e-6, max_iter=10)
-
-        gmm.fit(feats_)
-        prob = gmm.predict_proba(feats_)
-        prob = prob[:, gmm.means_.argmax()]
-        for i in range(len(cls_index)):
-            probs[cls_index[i]] = prob[i]
-        #         weights, means, covars = g.weights_, g.means_, g.covariances_
-
-        #         # boundary? QDA!
-        #         a, b = (1/2) * ((1/covars[0]) - (1/covars[1])), -(means[0]/covars[0]) + (means[1]/covars[1])
-        #         c = (1/2) * ((np.square(means[0])/covars[0]) - (np.square(means[1])/covars[1]))
-        #         c -= np.log((weights[0])/np.sqrt(2*np.pi*covars[0]))
-        #         c += np.log((weights[1])/np.sqrt(2*np.pi*covars[1]))
-        #         d = b**2 - 4*a*c
-
-        #         bound = estimate_purity(feats, means, covars, weights)
-        clean_labels += [cls_index[clean_idx] for clean_idx in range(len(cls_index)) if prob[clean_idx] > p_threshold]
-
-    return np.array(clean_labels, dtype=np.int64), probs
 
 def plot_train_loss_and_test_acc(avg_train_losses,test_acc_list,args,pred_precision=None,ori_pred_precision=None,saver=None,save=False):
     fig = plt.figure(figsize=(1200,800))
