@@ -96,7 +96,7 @@ def parse_args():
                                            'single_aug_after_sel','single_ae_sel','single_ae','single_ae_aug',
                                            'single_ae_aug_sel_allaug','single_ae_aug_before_sel','dividemix', 'CTW'],
                         default='CTW')
-    parser.add_argument('--manual_seeds', type=int, nargs='+', default=[37, 118, 337, 815, 19],
+    parser.add_argument('--manual_seeds', type=int, nargs='+', default=[37, 118, 337, 815, 19], # For fair comparation, we set the same seeds for all methods.
                         help='manual_seeds for five folds cross varidation')
     parser.add_argument('--label_correct', action='store_true', default=False, help='if correct label')
     parser.add_argument('--num_training_samples',type=int,default=0,help='num of trainging samples')
