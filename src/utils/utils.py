@@ -339,6 +339,8 @@ def evaluate_model(model, dataloder, y_true):
         yhat1 = predict(model[0], dataloder)
         yhat2 = predict(model[1], dataloder)
         yhat = (yhat1+yhat2)/2
+    elif isinstance(model,list):
+        yhat = predict(model[0], dataloder)
     else:
         yhat = predict(model, dataloder)
 

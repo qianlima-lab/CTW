@@ -5,19 +5,10 @@
   </component>
   <component name="ChangeListManager">
     <list default="true" id="9e90555d-e331-49ff-af20-46c31169801a" name="变更" comment="">
-      <change beforePath="$PROJECT_DIR$/.idea/deployment.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/deployment.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/.idea/vcs.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/vcs.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/README.md" beforeDir="false" afterPath="$PROJECT_DIR$/README.md" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/picture/table1.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/picture/table2.png" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/picture/table3.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/run_CAug_vs_AAug.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_CAug_vs_AAug.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/run_ablation.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_ablation.sh" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/run_sym30.sh" beforeDir="false" afterPath="$PROJECT_DIR$/run_sym30.sh" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/BMM_single_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/BMM_single_experiment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/SREA_single_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/SREA_single_experiment.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/Sel_CL_experiment.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/Sel_CL_experiment.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cd-diagram" beforeDir="false" afterPath="$PROJECT_DIR$/src/cd-diagram" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cd-diagram/FordA/FordA_TEST.tsv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cd-diagram/FordA/FordA_TRAIN.tsv" beforeDir="false" />
@@ -25,31 +16,10 @@
       <change beforePath="$PROJECT_DIR$/src/cd-diagram/InsectWingbeatSound/InsectWingbeatSound_TRAIN.tsv" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cd-diagram/cd-diagram.png" beforeDir="false" />
       <change beforePath="$PROJECT_DIR$/src/cd-diagram/main.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/main.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/main.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plot/plot.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plot/plot.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plot/plot_loss_with_seaborn.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plot/plot_loss_with_seaborn.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/plot/visualization.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/plot/visualization.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/ucr_data/load_ucr_pre.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/ucr_data/load_ucr_pre.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/SREA_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_SREA.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/MemoryMoCo.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/MemoryMoCo.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/other_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/other_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/test_eval.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/test_eval.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_mixup.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_mixup.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_mixup_v2.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_noise.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_noise.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/Sel_CL_utils/utils_noise_v2.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/decorators.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/decorators.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/dividemix_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/dividemix_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/log_utils.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/plotting_utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/plotting_utils.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/saver.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/saver.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_BMM.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_BMM.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_Sel_CL.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_Sel_CL.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_coteaching.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_coteaching.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_dividemix.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_dividemix.py" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_sigua.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/src/utils/training_helper_single_model.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/training_helper_single_model.py" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/src/utils/utils.py" beforeDir="false" afterPath="$PROJECT_DIR$/src/utils/utils.py" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/statistic_results/table1.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/statistic_results/table2.png" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/statistic_results/table3.png" beforeDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -254,6 +224,12 @@
       <workItem from="1673057750087" duration="29243000" />
       <workItem from="1673165163789" duration="746000" />
       <workItem from="1673184224750" duration="2010000" />
+      <workItem from="1673356627297" duration="1532000" />
+      <workItem from="1673765375970" duration="3473000" />
+      <workItem from="1673936502625" duration="325000" />
+      <workItem from="1673962924557" duration="1898000" />
+      <workItem from="1674030674579" duration="603000" />
+      <workItem from="1674053684068" duration="1147000" />
     </task>
     <servers />
   </component>
@@ -275,7 +251,7 @@
   <component name="com.intellij.coverage.CoverageDataManagerImpl">
     <SUITE FILE_PATH="coverage/CTW_code$Sel_CL_experiment.coverage" NAME="Sel_CL_experiment 覆盖结果" MODIFIED="1671112121884" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/CTW_code$global_log.coverage" NAME="global_log 覆盖结果" MODIFIED="1670471273551" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src/config" />
-    <SUITE FILE_PATH="coverage/CTW_code$main.coverage" NAME="main 覆盖结果" MODIFIED="1673099844585" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
+    <SUITE FILE_PATH="coverage/CTW_code$main.coverage" NAME="main 覆盖结果" MODIFIED="1673356897562" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/CTW_code$BMM_single_experiment.coverage" NAME="BMM_single_experiment 覆盖结果" MODIFIED="1670831030295" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$PROJECT_DIR$/src" />
     <SUITE FILE_PATH="coverage/CTW_code$config.coverage" NAME="config 覆盖结果" MODIFIED="1670466695686" SOURCE_PROVIDER="com.intellij.coverage.DefaultCoverageFileProvider" RUNNER="coverage.py" COVERAGE_BY_TEST_ENABLED="true" COVERAGE_TRACING_ENABLED="false" WORKING_DIRECTORY="$USER_HOME$/AppData/Local/JetBrains/PyCharm2021.2/remote_sources/-1222497237/1117411364/logging" />
   </component>
