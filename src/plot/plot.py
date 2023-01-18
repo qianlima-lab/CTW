@@ -16,7 +16,7 @@ confnum = pd.read_csv(os.path.join(
 sns.set_style('whitegrid')
 # for epoch in [50,100,150,200,250,290]:
 acc_dict={'min-max':[],'z-score':[]}
-for seed in [37, 118, 337, 815]:
+for seed in [37, 118, 337, 815, 19]:
     newdf=confnum.groupby(['epoch', 'method', 'seed'], as_index=False).sum()
     for mt in ['min-max','z-score']:
         acc_seed_method = newdf[newdf.seed==seed][newdf.method==mt]['TP']/newdf[newdf.seed==seed][newdf.method==mt]['total']
