@@ -240,6 +240,7 @@ def train_model(model, train_loader, test_loader, args, tau,train_dataset=None,s
         with torch.no_grad():
             t_sne(xs, ys, y_clean, model=model, tsne=True, args=args, datestr=datestr, sel_dict=sel_dict)
 
+    # We test the final model at line 271
     test_results_last_ten_epochs = dict()
     test_results_last_ten_epochs['last_ten_test_acc'] = test_acc_list[-10:]
     test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
@@ -269,9 +270,9 @@ def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
 
     ########################################## Eval ############################################
 
-    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
+    # save test_results: test_acc(the final model), test_f1(the final model), avg_last_ten_test_acc, avg_last_ten_test_f1
     test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
-                                  'Test', True, plt_cm=plt_cm, plt_lables=False)
+                                  'Test', True, plt_cm=plt_cm, plt_lables=False) # evaluate_class will evaluate the final model
     test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
     test_results['avg_last_ten_test_f1'] = np.mean(test_results_last_ten_epochs['last_ten_test_f1'])
 

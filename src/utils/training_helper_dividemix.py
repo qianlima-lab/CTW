@@ -166,6 +166,8 @@ def train_model(models, args, train_dataset,test_dataset,test_loader_ori=None,tr
     if args.plt_loss_hist:
         plot_train_loss_and_test_acc(test_acc_list,train_accuracy,args=args,
                                      saver=saver,save=True)
+
+    # We test the final model at line 194
     test_results_last_ten_epochs = dict()
     test_results_last_ten_epochs['last_ten_test_acc'] = test_acc_list[-10:]
     test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
@@ -191,7 +193,7 @@ def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
 
     ########################################## Eval ############################################
 
-    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
+    # save test_results: test_acc(the final model), test_f1(the final model), avg_last_ten_test_acc, avg_last_ten_test_f1
     test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
                                   'Test', True, plt_cm=plt_cm, plt_lables=False)
     test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])

@@ -230,7 +230,7 @@ def main(args, dataset_name=None):
         args.test_batch_size = batch_size
         if args.batch_size<=20:
             args.num_workers=0
-        # args.batch_size = 2906
+        
         # ##########################
         len_x_train=len(x_train)
 

@@ -876,7 +876,8 @@ def train_model(model, train_loader, valid_loader, test_loader, mixup, bootbeta,
     #     os.makedirs(list_path)
     # np.save(acc_npy_path, test_acc_list)
     # np.save(f1_npy_path, f1s)
-
+    
+    # we test the final model at line 940
     test_results_last_ten_epochs = dict()
     test_results_last_ten_epochs['last_ten_test_acc'] = test_acc_list[-10:]
     test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
@@ -938,7 +939,7 @@ def train_eval_model(model, x_train, x_valid, x_test, Y_train, Y_valid, Y_test, 
 
     ########################################## Eval ############################################
 
-    # save test_results: test_acc(the last model), test_f1(the last model), avg_last_ten_test_acc, avg_last_ten_test_f1
+    # save test_results: test_acc(the final model), test_f1(the final model), avg_last_ten_test_acc, avg_last_ten_test_f1
     test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
                                   'Test', correct_labels, plt_cm=plt_cm, plt_lables=False)
     test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
