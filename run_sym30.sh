@@ -15,9 +15,9 @@ nohup python ./src/main.py --model vanilla --epochs 300 --lr 1e-3 --label_noise 
 --embedding_size 32 --ni 0.3 --num_workers 1 --cuda_device 0 --outfile vanilla.csv >/dev/null 2>&1 &
 
 # Co-teaching
-nohup python ./src/main.py --model co_teaching_mloss --epochs 300 --lr 1e-3 --label_noise 0 \
---embedding_size 32 --ni 0.3 --mean_loss_len 10 --num_workers 2 --gamma 0.3 \
---cuda_device 0 --aug NoAug --outfile co_teaching.csv >/dev/null 2>&1 &
+nohup python ./src/main.py --model co_teaching_mloss --epochs 300 --lr 1e-3 --label_noise 1 \
+--embedding_size 32 --ni 0.4 --mean_loss_len 10 --num_workers 2 --gamma 0.3 --ucr 128 \
+--cuda_device 1 --aug NoAug --outfile co_teaching_asym40.csv >/dev/null 2>&1 &
 
 # SIGUA
 nohup python ./src/main.py --model sigua --epochs 300 --lr 1e-3 --label_noise 0 \

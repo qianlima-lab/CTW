@@ -25,6 +25,13 @@
             </list>
           </settings>
         </remote-mappings>
+        <remote-mappings server-id="python@sftp://mpt@222.201.144.245:22/dev_data/dev_data/mpt/conda/envs/py375/bin/python">
+          <settings>
+            <list>
+              <mapping local-root="$PROJECT_DIR$" remote-root="/dev_data/dev_data/mpt/experiment_data/CTW_code" />
+            </list>
+          </settings>
+        </remote-mappings>
       </list>
     </list>
   </component>

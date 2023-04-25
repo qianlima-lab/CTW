@@ -126,7 +126,8 @@ def test_step(data_loader, model1,model2=None):
         if model2 is not None:
             logits1 = model1(x)
             logits2 = model2(x)
-            logits = (logits1 + logits2) / 2
+            # logits = (torch.softmax(logits1,dim=-1) + torch.softmax(logits2,dim=-1)) / 2
+            logits = logits1 + logits2 / 2
         else:
             logits = model1(x)
 
@@ -250,7 +251,7 @@ def train_model(models, train_loader, test_loader, args, tau,saver=None):
         plot_train_loss_and_test_acc(train_avg_loss_list,test_acc_list,args,pred_precision=train_acc_list,
                                      saver=saver,save=True)
 
-    # we test the final model at line 253
+    # we test the final model at line 278
     test_results_last_ten_epochs = dict()
     test_results_last_ten_epochs['last_ten_test_acc'] = test_acc_list[-10:]
     test_results_last_ten_epochs['last_ten_test_f1'] = test_f1s[-10:]
@@ -278,8 +279,11 @@ def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
     ########################################## Eval ############################################
 
     # save test_results: test_acc(the final model), test_f1(the final model), avg_last_ten_test_acc, avg_last_ten_test_f1
-    test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
-                                  'Test', True, plt_cm=plt_cm, plt_lables=False)
+    # test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
+    #                               'Test', True, plt_cm=plt_cm, plt_lables=False)
+    test_results = dict()
+    test_results['acc'] = test_results_last_ten_epochs['last_ten_test_acc'][-1]
+    test_results['f1_weighted'] = test_results_last_ten_epochs['last_ten_test_f1'][-1]
     test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
     test_results['avg_last_ten_test_f1'] = np.mean(test_results_last_ten_epochs['last_ten_test_f1'])
 

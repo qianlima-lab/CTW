@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
-  <component name="PublishConfigData" autoUpload="Always" serverName="mpt@55v6321b36.zicp.fun:23815" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
+  <component name="PublishConfigData" autoUpload="Always" serverName="mpt@222.201.144.245:22" remoteFilesAllowedToDisappearOnAutoupload="false" autoUploadExternalChanges="true">
     <serverData>
       <paths name="mpt@116.56.134.107:22">
         <serverdata>
@@ -9,14 +9,7 @@
           </mappings>
         </serverdata>
       </paths>
-      <paths name="mpt@116.56.134.138:22">
-        <serverdata>
-          <mappings>
-            <mapping local="$PROJECT_DIR$" web="/" />
-          </mappings>
-        </serverdata>
-      </paths>
-      <paths name="mpt@116.56.134.138:22 password (1)">
+      <paths name="mpt@116.56.134.138:22 password">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />
@@ -152,7 +145,7 @@
       <paths name="mpt@222.201.144.245:22">
         <serverdata>
           <mappings>
-            <mapping deploy="/home/dev_data/mpt/experiment_data/CTW_code" local="$PROJECT_DIR$" web="/" />
+            <mapping deploy="/dev_data/dev_data/mpt/experiment_data/CTW_code" local="$PROJECT_DIR$" web="/" />
           </mappings>
         </serverdata>
       </paths>
@@ -219,7 +212,21 @@
           </mappings>
         </serverdata>
       </paths>
+      <paths name="mpt@222.201.144.245:22 password (9)">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
       <paths name="mpt@5560n6l068.oicp.vip:32938">
+        <serverdata>
+          <mappings>
+            <mapping local="$PROJECT_DIR$" web="/" />
+          </mappings>
+        </serverdata>
+      </paths>
+      <paths name="mpt@5560n6l068.oicp.vip:32938 (2)">
         <serverdata>
           <mappings>
             <mapping local="$PROJECT_DIR$" web="/" />

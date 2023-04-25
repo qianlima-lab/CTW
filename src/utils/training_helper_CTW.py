@@ -231,8 +231,11 @@ def train_eval_model(model, x_train, x_test, Y_train, Y_test, Y_train_clean,
     ########################################## Eval ############################################
 
     # save test_results: test_acc(the final model), test_f1(the final model), avg_last_ten_test_acc, avg_last_ten_test_f1
-    test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
-                                  'Test', True, plt_cm=plt_cm, plt_lables=False) # evaluate_class will evaluate the final model.
+    # test_results = evaluate_class(model, x_test, Y_test, None, test_loader, ni, saver, 'CNN',
+    #                               'Test', True, plt_cm=plt_cm, plt_lables=False) # evaluate_class will evaluate the final model.
+    test_results = dict()
+    test_results['acc'] = test_results_last_ten_epochs['last_ten_test_acc'][-1]
+    test_results['f1_weighted'] = test_results_last_ten_epochs['last_ten_test_f1'][-1]
     test_results['avg_last_ten_test_acc'] = np.mean(test_results_last_ten_epochs['last_ten_test_acc'])
     test_results['avg_last_ten_test_f1'] = np.mean(test_results_last_ten_epochs['last_ten_test_f1'])
 

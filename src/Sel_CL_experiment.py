@@ -246,7 +246,7 @@ def main(args, dataset_name=None):
         ######################################################################################################
 
         df_results = main_wrapper_Sel_CL(args, x_train, x_test, Y_train_clean, Y_test_clean,
-                                         saver,seeds=[seeds[seeds_i]])
+                                         saver,seed=seeds[seeds_i])
 
         five_test_acc.append(df_results["acc"])
         five_test_f1.append(df_results["f1_weighted"])
