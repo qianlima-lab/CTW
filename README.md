@@ -1,6 +1,6 @@
 # CTW: Confident Time-Warping for Time-Series Label-Noise Learning
 
-This is the training code for our work "CTW: Confident Time-Warping for Time-Series Label-Noise Learning"
+This is the training code for our work "CTW: Confident Time-Warping for Time-Series Label-Noise Learning". The paper has been accepted by IJCAI2023.
 
 ## Abstract
 Noisy labels seriously degrade the generalization ability of Deep Neural Networks (DNNs) various classification tasks. Existing studies on label-noise learning mainly focus on computer vision. However, time series also suffer from the same issue. Directly applying the methods from computer vision to time series may reduce the temporal dependency due to different data characteristics. How to make use of the properties of time series to enable DNNs to learn robust representations in the presence of noisy labels has not been fully explored. To this end, this paper proposes a method that expands the distribution of \textbf{C}onfident instances by \textbf{T}ime-\textbf{W}arping (CTW) to learn robust representations of time series. Specifically, since applying the augmentation method to all data may introduce extra mislabeled data, we select confident instances to implement Time-Warping. In addition, we normalize the distribution of the training loss of each class to eliminate the model's selection preference for instances of different classes, alleviating the class imbalance caused by sample selection. Extensive experimental results show that CTW achieves state-of-the-art performance on the UCR datasets when dealing with different types of noise. Besides, the t-SNE visualization of our method verifies that augmenting clean data improves the generalization ability.
@@ -8,20 +8,6 @@ Noisy labels seriously degrade the generalization ability of Deep Neural Network
 <div align="center">
 <img src="picture/Model.png" width="70%">
 </div>
-
-## Rebuttal
-<div align="center">
-<img src="IJCAI_rebuttal_experiments/clean.png" width="70%">
-</div>
-
-<div align="center">
-<img src="IJCAI_rebuttal_experiments/co_teaching_decoder.png" width="70%">
-</div>
-
-<div align="center">
-<img src="IJCAI_rebuttal_experiments/loss_distribution.png" width="70%">
-</div>
-
 
 ## Data
 We evaluate our model on publicly available time-series classification datasets from the UCR and UEA repositories:
