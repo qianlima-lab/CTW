@@ -9,20 +9,6 @@ Noisy labels seriously degrade the generalization ability of Deep Neural Network
 <img src="picture/Model.png" width="70%">
 </div>
 
-## Rebuttal
-<div align="center">
-<img src="IJCAI_rebuttal_experiments/clean.png" width="70%">
-</div>
-
-<div align="center">
-<img src="IJCAI_rebuttal_experiments/co_teaching_decoder.png" width="70%">
-</div>
-
-<div align="center">
-<img src="IJCAI_rebuttal_experiments/loss_distribution.png" width="70%">
-</div>
-
-
 ## Data
 We evaluate our model on publicly available time-series classification datasets from the UCR and UEA repositories:
 
